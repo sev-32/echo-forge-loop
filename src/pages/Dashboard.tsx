@@ -5,6 +5,8 @@ import { EventLogPanel } from '@/components/EventLogPanel';
 import { BudgetPanel } from '@/components/BudgetPanel';
 import { TestHarnessPanel } from '@/components/TestHarnessPanel';
 import { ContextPanel } from '@/components/ContextPanel';
+import { JournalPanel } from '@/components/JournalPanel';
+import { TestAuditPanel } from '@/components/TestAuditPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Dashboard() {
@@ -31,22 +33,19 @@ export default function Dashboard() {
         <Tabs defaultValue="orchestration" className="h-full flex flex-col">
           <TabsList className="bg-surface-1 mb-4 self-start">
             <TabsTrigger value="orchestration">Orchestration</TabsTrigger>
+            <TabsTrigger value="journal">AI Journal</TabsTrigger>
             <TabsTrigger value="tests">Test Harness</TabsTrigger>
+            <TabsTrigger value="audit">Test Audit</TabsTrigger>
           </TabsList>
 
           <TabsContent value="orchestration" className="flex-1 mt-0 min-h-0">
             <div className="grid grid-cols-12 gap-4 h-full">
-              {/* Left Column - Task Queue */}
               <div className="col-span-5 h-[calc(100vh-220px)]">
                 <TaskQueuePanel />
               </div>
-
-              {/* Middle Column - Events */}
               <div className="col-span-4 h-[calc(100vh-220px)]">
                 <EventLogPanel />
               </div>
-
-              {/* Right Column - Budget & Context */}
               <div className="col-span-3 space-y-4">
                 <BudgetPanel />
                 <ContextPanel />
@@ -54,9 +53,21 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
+          <TabsContent value="journal" className="flex-1 mt-0 min-h-0">
+            <div className="h-[calc(100vh-220px)]">
+              <JournalPanel />
+            </div>
+          </TabsContent>
+
           <TabsContent value="tests" className="flex-1 mt-0 min-h-0">
             <div className="h-[calc(100vh-220px)]">
               <TestHarnessPanel />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="audit" className="flex-1 mt-0 min-h-0">
+            <div className="h-[calc(100vh-220px)]">
+              <TestAuditPanel />
             </div>
           </TabsContent>
         </Tabs>
