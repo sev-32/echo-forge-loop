@@ -9,7 +9,7 @@ import { taskQueue } from '@/lib/task-queue';
 import { governor } from '@/lib/autonomy-governor';
 import { contextManager } from '@/lib/context-manager';
 import { verifier } from '@/lib/verifier';
-import { testHarness, BUILT_IN_TESTS } from '@/lib/test-harness';
+import { testHarness } from '@/lib/test-harness';
 import type { 
   Event, 
   Task, 
@@ -311,28 +311,14 @@ export function useTestHarness() {
 
   const runAllTests = useCallback(async () => {
     setRunning(true);
-    const allResults: TestResult[] = [];
-    
-    for (const spec of BUILT_IN_TESTS) {
-      setCurrentTest(spec.test_id);
-      try {
-        // Reset state between tests
-        eventStore.clear();
-        taskQueue.clear();
-        contextManager.clear();
-        governor.reset();
-        
-        const result = await testHarness.runTest(spec.test_id);
-        allResults.push(result);
-      } catch (error) {
-        console.error(`Test ${spec.test_id} failed:`, error);
-      }
+    try {
+      const allResults = await testHarness.runAllTests();
+      setResults(allResults);
+    } catch (error) {
+      console.error('Suite run failed:', error);
     }
-    
-    setResults(allResults);
     setRunning(false);
     setCurrentTest(null);
-    return allResults;
   }, []);
 
   const generateReport = useCallback(() => {
