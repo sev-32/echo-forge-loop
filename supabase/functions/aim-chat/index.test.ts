@@ -273,12 +273,36 @@ Deno.test("Full pipeline: thinking → plan → execute → verify → reflect �
   assert(deltaCount > 0 || run.errors.length > 0, "Must have deltas or errors");
   assert(run.taskOutputs.length > 0 || run.errors.length > 0, "No outputs or errors");
 
+  let totalWordCount = 0;
   for (let i = 0; i < run.taskOutputs.length; i++) {
     const out = run.taskOutputs[i];
+    const words = out.split(/\s+/).filter((w: string) => w.length > 0).length;
+    totalWordCount += words;
     assert(out.length > 50, `Task ${i + 1} output too short (${out.length} chars)`);
-    console.log(`  ✅ Task ${i + 1}: ${out.length} chars`);
+    console.log(`  ✅ Task ${i + 1}: ${out.length} chars, ${words} words`);
     console.log(`    Preview: ${out.slice(0, 200).replace(/\n/g, " ")}…`);
   }
+  console.log(`  Total words across all tasks: ${totalWordCount}`);
+
+  // Section-by-section execution events
+  if (run.sectionEvents.length > 0) {
+    console.log(`\n  📐 Section-based execution detected:`);
+    for (const se of run.sectionEvents) {
+      if (se.type === 'task_sections_planned') {
+        console.log(`    Task ${se.task_index + 1}: ${se.sections.length} sections planned`);
+        se.sections.forEach((s: any) => console.log(`      → "${s.title}" (~${s.word_target}w)`));
+      }
+    }
+  }
+
+  // Continuation events
+  if (run.continuationEvents.length > 0) {
+    console.log(`\n  📝 Auto-continuations:`);
+    for (const ce of run.continuationEvents) {
+      console.log(`    Task ${ce.task_index + 1}: ${ce.reason} (${ce.current_words} → ${ce.target_words} words)`);
+    }
+  }
+
   if (run.errors.length > 0) {
     console.log(`  ⚠️ Errors: ${run.errors.length}`);
     run.errors.forEach(e => console.log(`    ${e}`));
