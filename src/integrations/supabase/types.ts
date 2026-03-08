@@ -279,6 +279,84 @@ export type Database = {
         }
         Relationships: []
       }
+      run_traces: {
+        Row: {
+          approach: string
+          avg_score: number | null
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          generated_rules: Json
+          goal: string
+          id: string
+          knowledge_update: Json | null
+          memory_loaded: Json
+          open_questions: string[]
+          overall_complexity: string
+          planning_reasoning: string
+          planning_score: number | null
+          reflection: Json | null
+          run_id: string
+          status: string
+          strategy_score: number | null
+          task_count: number
+          tasks_detail: Json
+          tasks_passed: number
+          thoughts: Json
+          total_tokens: number
+        }
+        Insert: {
+          approach?: string
+          avg_score?: number | null
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          generated_rules?: Json
+          goal: string
+          id?: string
+          knowledge_update?: Json | null
+          memory_loaded?: Json
+          open_questions?: string[]
+          overall_complexity?: string
+          planning_reasoning?: string
+          planning_score?: number | null
+          reflection?: Json | null
+          run_id: string
+          status?: string
+          strategy_score?: number | null
+          task_count?: number
+          tasks_detail?: Json
+          tasks_passed?: number
+          thoughts?: Json
+          total_tokens?: number
+        }
+        Update: {
+          approach?: string
+          avg_score?: number | null
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          generated_rules?: Json
+          goal?: string
+          id?: string
+          knowledge_update?: Json | null
+          memory_loaded?: Json
+          open_questions?: string[]
+          overall_complexity?: string
+          planning_reasoning?: string
+          planning_score?: number | null
+          reflection?: Json | null
+          run_id?: string
+          status?: string
+          strategy_score?: number | null
+          task_count?: number
+          tasks_detail?: Json
+          tasks_passed?: number
+          thoughts?: Json
+          total_tokens?: number
+        }
+        Relationships: []
+      }
       snapshots: {
         Row: {
           created_at: string
