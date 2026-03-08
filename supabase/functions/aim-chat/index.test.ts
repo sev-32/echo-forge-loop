@@ -41,6 +41,7 @@ async function captureRun(goal: string, maxRetries = 3): Promise<RunCapture> {
       events: [], plan: null, taskOutputs: [], taskDeltas: {},
       verifications: [], reflection: null, rulesGenerated: [],
       runComplete: null, thoughts: [], memoryEvents: [],
+      sectionEvents: [], continuationEvents: [],
       errors: [], totalDurationMs: 0, rawEventTypes: [],
     };
 
