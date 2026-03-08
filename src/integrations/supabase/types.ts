@@ -147,6 +147,50 @@ export type Database = {
         }
         Relationships: []
       }
+      ece_tracking: {
+        Row: {
+          actual_accuracy: number | null
+          bin: number
+          created_at: string
+          id: string
+          model_id: string
+          operation_type: Database["public"]["Enums"]["vif_operation_type"]
+          predicted_confidence: number
+          run_id: string
+          witness_id: string | null
+        }
+        Insert: {
+          actual_accuracy?: number | null
+          bin?: number
+          created_at?: string
+          id?: string
+          model_id?: string
+          operation_type: Database["public"]["Enums"]["vif_operation_type"]
+          predicted_confidence: number
+          run_id: string
+          witness_id?: string | null
+        }
+        Update: {
+          actual_accuracy?: number | null
+          bin?: number
+          created_at?: string
+          id?: string
+          model_id?: string
+          operation_type?: Database["public"]["Enums"]["vif_operation_type"]
+          predicted_confidence?: number
+          run_id?: string
+          witness_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ece_tracking_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           created_at: string
@@ -584,6 +628,86 @@ export type Database = {
         }
         Relationships: []
       }
+      witness_envelopes: {
+        Row: {
+          actual_accuracy: number | null
+          atom_id: string | null
+          confidence_band: Database["public"]["Enums"]["confidence_band"]
+          confidence_score: number
+          context_hash: string
+          created_at: string
+          ece_contribution: number | null
+          id: string
+          input_tokens: number
+          kappa_gate_result: Database["public"]["Enums"]["kappa_gate_result"]
+          kappa_threshold: number
+          latency_ms: number | null
+          metadata: Json
+          model_id: string
+          operation_type: Database["public"]["Enums"]["vif_operation_type"]
+          output_tokens: number
+          plan_step_id: string | null
+          prompt_hash: string
+          response_hash: string
+          run_id: string | null
+          task_id: string | null
+        }
+        Insert: {
+          actual_accuracy?: number | null
+          atom_id?: string | null
+          confidence_band?: Database["public"]["Enums"]["confidence_band"]
+          confidence_score?: number
+          context_hash?: string
+          created_at?: string
+          ece_contribution?: number | null
+          id?: string
+          input_tokens?: number
+          kappa_gate_result?: Database["public"]["Enums"]["kappa_gate_result"]
+          kappa_threshold?: number
+          latency_ms?: number | null
+          metadata?: Json
+          model_id?: string
+          operation_type: Database["public"]["Enums"]["vif_operation_type"]
+          output_tokens?: number
+          plan_step_id?: string | null
+          prompt_hash: string
+          response_hash: string
+          run_id?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          actual_accuracy?: number | null
+          atom_id?: string | null
+          confidence_band?: Database["public"]["Enums"]["confidence_band"]
+          confidence_score?: number
+          context_hash?: string
+          created_at?: string
+          ece_contribution?: number | null
+          id?: string
+          input_tokens?: number
+          kappa_gate_result?: Database["public"]["Enums"]["kappa_gate_result"]
+          kappa_threshold?: number
+          latency_ms?: number | null
+          metadata?: Json
+          model_id?: string
+          operation_type?: Database["public"]["Enums"]["vif_operation_type"]
+          output_tokens?: number
+          plan_step_id?: string | null
+          prompt_hash?: string
+          response_hash?: string
+          run_id?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "witness_envelopes_atom_id_fkey"
+            columns: ["atom_id"]
+            isOneToOne: false
+            referencedRelation: "atoms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -602,6 +726,16 @@ export type Database = {
         | "discovery"
         | "constraint"
         | "artifact"
+      confidence_band: "A" | "B" | "C"
+      kappa_gate_result: "pass" | "abstain" | "fail"
+      vif_operation_type:
+        | "plan"
+        | "execute"
+        | "verify"
+        | "reflect"
+        | "critique"
+        | "retrieve"
+        | "build"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -739,6 +873,17 @@ export const Constants = {
         "discovery",
         "constraint",
         "artifact",
+      ],
+      confidence_band: ["A", "B", "C"],
+      kappa_gate_result: ["pass", "abstain", "fail"],
+      vif_operation_type: [
+        "plan",
+        "execute",
+        "verify",
+        "reflect",
+        "critique",
+        "retrieve",
+        "build",
       ],
     },
   },
