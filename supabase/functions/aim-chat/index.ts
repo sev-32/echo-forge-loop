@@ -1089,7 +1089,8 @@ ${conversationSummary}
           send({ type: 'synthesis_complete', response: synthesizedResponse, confidence: 0.8, follow_up_suggestions: [], caveats: [], metadata: { word_count: countWords(synthesizedResponse), style_applied: 'direct' } });
           send({ type: 'thinking', phase: 'synthesize', content: `Fast synthesis: ${countWords(synthesizedResponse)} words (direct output).` });
         } else {
-          const synthPlan = auditDecision?.synthesis_plan || { structure: 'Sequential', key_points: [], style_notes: 'Clear and thorough' };
+          try {
+            const synthPlan = auditDecision?.synthesis_plan || { structure: 'Sequential', key_points: [], style_notes: 'Clear and thorough' };
           const styleAnalysis = auditDecision?.user_style_analysis || { tone: 'technical', detail_preference: 'thorough', patterns_observed: [] };
 
           const allOutputsForSynth = plan.tasks.map((t: any, i: number) =>
