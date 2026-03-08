@@ -1195,12 +1195,12 @@ Patterns: ${(styleAnalysis.patterns_observed || []).join(', ')}
             synthesizedResponse = taskOutputs.join('\n\n---\n\n');
             send({ type: 'synthesis_complete', response: synthesizedResponse, confidence: 0.5, follow_up_suggestions: [], caveats: ['Synthesis failed — showing raw outputs'] });
           }
-        } catch (synthErr: any) {
-          console.error('Synthesis error:', synthErr);
-          synthesizedResponse = taskOutputs.join('\n\n---\n\n');
-          send({ type: 'synthesis_complete', response: synthesizedResponse, confidence: 0.3, follow_up_suggestions: [], caveats: ['Synthesis error — showing raw outputs'] });
+          } catch (synthErr: any) {
+            console.error('Synthesis error:', synthErr);
+            synthesizedResponse = taskOutputs.join('\n\n---\n\n');
+            send({ type: 'synthesis_complete', response: synthesizedResponse, confidence: 0.3, follow_up_suggestions: [], caveats: ['Synthesis error — showing raw outputs'] });
+          }
         }
-
         // ═══════════════════════════════════════════════════
         // PHASE 3: DEEP SELF-REFLECTION (Critic + Witness roles)
         // ═══════════════════════════════════════════════════
