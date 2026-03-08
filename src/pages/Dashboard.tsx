@@ -151,6 +151,18 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
+          <TabsContent value="regression" className="flex-1 mt-0 min-h-0">
+            <div className="h-[calc(100vh-260px)] border border-border rounded-lg bg-surface-1 overflow-hidden">
+              <RegressionDashboard />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="knowledge" className="flex-1 mt-0 min-h-0">
+            <div className="h-[calc(100vh-260px)] border border-border rounded-lg bg-surface-1 overflow-hidden">
+              <KnowledgeGraphPanel />
+            </div>
+          </TabsContent>
+
           <TabsContent value="journal" className="flex-1 mt-0 min-h-0">
             <div className="h-[calc(100vh-260px)]"><JournalPanel /></div>
           </TabsContent>
