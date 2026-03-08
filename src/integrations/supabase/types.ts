@@ -221,6 +221,63 @@ export type Database = {
         }
         Relationships: []
       }
+      execution_plans: {
+        Row: {
+          budget_config: Json
+          budget_used: Json
+          completed_at: string | null
+          completed_steps: number
+          complexity: string
+          created_at: string
+          failed_steps: number
+          gates_config: Json
+          goal: string
+          id: string
+          metadata: Json
+          plan_acl: Json
+          reasoning: string
+          run_id: string
+          status: Database["public"]["Enums"]["plan_status"]
+          total_steps: number
+        }
+        Insert: {
+          budget_config?: Json
+          budget_used?: Json
+          completed_at?: string | null
+          completed_steps?: number
+          complexity?: string
+          created_at?: string
+          failed_steps?: number
+          gates_config?: Json
+          goal?: string
+          id?: string
+          metadata?: Json
+          plan_acl?: Json
+          reasoning?: string
+          run_id: string
+          status?: Database["public"]["Enums"]["plan_status"]
+          total_steps?: number
+        }
+        Update: {
+          budget_config?: Json
+          budget_used?: Json
+          completed_at?: string | null
+          completed_steps?: number
+          complexity?: string
+          created_at?: string
+          failed_steps?: number
+          gates_config?: Json
+          goal?: string
+          id?: string
+          metadata?: Json
+          plan_acl?: Json
+          reasoning?: string
+          run_id?: string
+          status?: Database["public"]["Enums"]["plan_status"]
+          total_steps?: number
+        }
+        Relationships: []
+      }
       journal_entries: {
         Row: {
           content: string
@@ -375,6 +432,102 @@ export type Database = {
           snapshot_hash?: string
         }
         Relationships: []
+      }
+      plan_steps: {
+        Row: {
+          assigned_role: Database["public"]["Enums"]["apoe_role"]
+          budget: Json
+          budget_used: Json
+          completed_at: string | null
+          created_at: string
+          depends_on: string[]
+          description: string
+          error: string | null
+          gate_before: Database["public"]["Enums"]["gate_type"] | null
+          gate_config: Json
+          gate_details: Json | null
+          gate_result: Database["public"]["Enums"]["gate_result"] | null
+          id: string
+          input_refs: string[]
+          metadata: Json
+          output_refs: string[]
+          plan_id: string
+          result: Json | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["step_status"]
+          step_index: number
+          step_type: Database["public"]["Enums"]["plan_step_type"]
+          title: string
+          witness_id: string | null
+        }
+        Insert: {
+          assigned_role: Database["public"]["Enums"]["apoe_role"]
+          budget?: Json
+          budget_used?: Json
+          completed_at?: string | null
+          created_at?: string
+          depends_on?: string[]
+          description?: string
+          error?: string | null
+          gate_before?: Database["public"]["Enums"]["gate_type"] | null
+          gate_config?: Json
+          gate_details?: Json | null
+          gate_result?: Database["public"]["Enums"]["gate_result"] | null
+          id?: string
+          input_refs?: string[]
+          metadata?: Json
+          output_refs?: string[]
+          plan_id: string
+          result?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["step_status"]
+          step_index?: number
+          step_type: Database["public"]["Enums"]["plan_step_type"]
+          title?: string
+          witness_id?: string | null
+        }
+        Update: {
+          assigned_role?: Database["public"]["Enums"]["apoe_role"]
+          budget?: Json
+          budget_used?: Json
+          completed_at?: string | null
+          created_at?: string
+          depends_on?: string[]
+          description?: string
+          error?: string | null
+          gate_before?: Database["public"]["Enums"]["gate_type"] | null
+          gate_config?: Json
+          gate_details?: Json | null
+          gate_result?: Database["public"]["Enums"]["gate_result"] | null
+          id?: string
+          input_refs?: string[]
+          metadata?: Json
+          output_refs?: string[]
+          plan_id?: string
+          result?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["step_status"]
+          step_index?: number
+          step_type?: Database["public"]["Enums"]["plan_step_type"]
+          title?: string
+          witness_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_steps_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "execution_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_steps_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       process_rules: {
         Row: {
@@ -716,6 +869,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      apoe_role:
+        | "planner"
+        | "retriever"
+        | "reasoner"
+        | "verifier"
+        | "builder"
+        | "critic"
+        | "operator"
+        | "witness"
       atom_type:
         | "text"
         | "code"
@@ -727,7 +889,26 @@ export type Database = {
         | "constraint"
         | "artifact"
       confidence_band: "A" | "B" | "C"
+      gate_result: "pass" | "fail" | "warn" | "abstain"
+      gate_type: "quality" | "safety" | "policy"
       kappa_gate_result: "pass" | "abstain" | "fail"
+      plan_status: "draft" | "active" | "completed" | "failed" | "cancelled"
+      plan_step_type:
+        | "retrieve"
+        | "reason"
+        | "build"
+        | "verify"
+        | "critique"
+        | "plan"
+        | "witness"
+        | "operate"
+      step_status:
+        | "pending"
+        | "active"
+        | "completed"
+        | "failed"
+        | "skipped"
+        | "blocked"
       vif_operation_type:
         | "plan"
         | "execute"
@@ -863,6 +1044,16 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      apoe_role: [
+        "planner",
+        "retriever",
+        "reasoner",
+        "verifier",
+        "builder",
+        "critic",
+        "operator",
+        "witness",
+      ],
       atom_type: [
         "text",
         "code",
@@ -875,7 +1066,28 @@ export const Constants = {
         "artifact",
       ],
       confidence_band: ["A", "B", "C"],
+      gate_result: ["pass", "fail", "warn", "abstain"],
+      gate_type: ["quality", "safety", "policy"],
       kappa_gate_result: ["pass", "abstain", "fail"],
+      plan_status: ["draft", "active", "completed", "failed", "cancelled"],
+      plan_step_type: [
+        "retrieve",
+        "reason",
+        "build",
+        "verify",
+        "critique",
+        "plan",
+        "witness",
+        "operate",
+      ],
+      step_status: [
+        "pending",
+        "active",
+        "completed",
+        "failed",
+        "skipped",
+        "blocked",
+      ],
       vif_operation_type: [
         "plan",
         "execute",
