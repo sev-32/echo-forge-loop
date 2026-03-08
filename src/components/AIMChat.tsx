@@ -1039,13 +1039,22 @@ export function AIMChat() {
           }));
           emitSystemEvent('plan', `Plan: ${data.tasks.length} tasks (${data.overall_complexity})`, { task_count: data.tasks.length });
         },
-        onTaskStart: (idx, taskId, title) => {
+        onTaskStart: (idx, taskId, title, isAuditTask) => {
           updateRun(rd => {
             const tasks = [...rd.tasks];
-            if (tasks[idx]) tasks[idx] = { ...tasks[idx], id: taskId, status: 'running' };
+            if (tasks[idx]) {
+              tasks[idx] = { ...tasks[idx], id: taskId, status: 'running' };
+            } else {
+              // Audit-added task beyond initial plan
+              tasks.push({
+                id: taskId, index: idx, title, status: 'running', priority: 90,
+                criteriaCount: 0, detailLevel: 'standard', expectedSections: 3,
+                output: '', reasoning: isAuditTask ? 'Added by audit deepening' : '',
+              });
+            }
             return { ...rd, tasks, activePhase: 'execute' };
           });
-          emitSystemEvent('task_start', `▶ Task ${idx + 1}: ${title}`);
+          emitSystemEvent('task_start', `▶ ${isAuditTask ? '🔍 ' : ''}Task ${idx + 1}: ${title}`);
         },
         onTaskDelta: (idx, delta) => {
           updateRun(rd => {
