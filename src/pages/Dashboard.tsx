@@ -145,7 +145,7 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="agents" className="flex-1 mt-0 min-h-0">
+          <TabsContent value="agents" className="flex-1 mt-0 min-h-0" forceMount style={{ display: 'var(--agents-display, none)' } as any}>
             <div className="h-[calc(100vh-260px)] border border-border rounded-lg bg-surface-1 overflow-hidden">
               <AgentPanel />
             </div>
