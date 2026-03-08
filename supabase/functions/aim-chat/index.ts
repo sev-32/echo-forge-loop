@@ -163,7 +163,13 @@ You MUST assess the goal's complexity and calibrate your response accordingly:
           run_id: runId,
           goal: plan.goal_summary,
           approach: plan.approach,
-          tasks: plan.tasks.map((t: any, i: number) => ({ id: taskIds[i], index: i, title: t.title, status: 'queued', priority: t.priority, criteria_count: t.acceptance_criteria.length })),
+          overall_complexity: plan.overall_complexity || 'moderate',
+          tasks: plan.tasks.map((t: any, i: number) => ({
+            id: taskIds[i], index: i, title: t.title, status: 'queued', priority: t.priority,
+            criteria_count: t.acceptance_criteria.length,
+            detail_level: t.detail_level || 'standard',
+            expected_sections: t.expected_sections || 4,
+          })),
         });
 
         let totalTokens = 0;
