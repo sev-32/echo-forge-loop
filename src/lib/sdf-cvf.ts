@@ -81,7 +81,7 @@ export class QuartetParityTracker {
         blast_radius: params.blast_radius ?? {},
         witness_id: params.witness_id ?? null,
         metadata: params.metadata ?? {},
-      })
+      } as any)
       .select()
       .single();
 
