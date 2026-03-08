@@ -227,7 +227,7 @@ Deno.test("Full pipeline: thinking → plan → execute → verify → reflect �
     );
   }
 
-  console.log(`  ✅ Plan: "${run.plan.goal_summary}"`);
+  console.log(`  ✅ Plan: "${planGoal}"`);
   console.log(`  Approach: ${run.plan.approach?.slice(0, 120)}`);
   console.log(`  Complexity: ${run.plan.overall_complexity}`);
   console.log(`  Tasks: ${run.plan.tasks.length}`);
