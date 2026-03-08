@@ -931,9 +931,8 @@ export function AIMChat() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Get the active run (last assistant message with runData)
-  const activeRun = messages.findLast(m => m.role === 'assistant' && m.runData)?.runData;
+  const activeRun = [...messages].reverse().find(m => m.role === 'assistant' && m.runData)?.runData;
   const showMissionControl = activeRun && activeRun.status !== 'complete';
-  const lastCompleteRun = messages.findLast(m => m.role === 'assistant' && m.runData?.status === 'complete')?.runData;
 
   useEffect(() => {
     if (scrollRef.current && !showMissionControl) {
