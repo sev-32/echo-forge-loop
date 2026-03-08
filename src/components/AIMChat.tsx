@@ -283,6 +283,8 @@ const phaseConfig: Record<string, { icon: any; label: string; color: string }> =
   execute: { icon: Zap, label: 'Execute', color: 'text-accent' },
   verify: { icon: Shield, label: 'Verify', color: 'text-[hsl(var(--status-warning))]' },
   retry: { icon: RefreshCw, label: 'Retry', color: 'text-[hsl(var(--status-blocked))]' },
+  audit: { icon: ScanEye, label: 'Audit', color: 'text-[hsl(var(--status-info))]' },
+  synthesize: { icon: Layers, label: 'Synthesize', color: 'text-primary' },
   reflect: { icon: Sparkles, label: 'Reflect', color: 'text-[hsl(var(--status-pending))]' },
   evolve: { icon: TrendingUp, label: 'Evolve', color: 'text-primary' },
   complete: { icon: CheckCircle2, label: 'Complete', color: 'text-[hsl(var(--status-success))]' },
