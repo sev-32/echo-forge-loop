@@ -90,7 +90,7 @@ export class SharedEvidenceGraph {
         run_id: params.run_id ?? null,
         atom_id: params.atom_id ?? null,
         metadata: params.metadata ?? {},
-      })
+      } as any)
       .select()
       .single();
 
