@@ -1,1 +1,13 @@
 project_id = "jmkmwnipzpuwacssehzi"
+
+[functions.ai-step]
+verify_jwt = false
+
+[functions.ai-journal]
+verify_jwt = false
+
+[functions.ai-verify]
+verify_jwt = false
+
+[functions.ai-test-gen]
+verify_jwt = false
