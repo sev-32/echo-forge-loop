@@ -116,6 +116,13 @@ async function captureRun(goal: string, maxRetries = 3): Promise<RunCapture> {
           case "task_error":
             result.errors.push(evt.error);
             break;
+          case "task_sections_planned":
+          case "task_section_start":
+            result.sectionEvents.push(evt);
+            break;
+          case "task_continuation":
+            result.continuationEvents.push(evt);
+            break;
           case "reflection":
             result.reflection = evt.data;
             break;
