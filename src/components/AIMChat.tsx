@@ -335,6 +335,7 @@ function RunVisualization({ runData }: { runData: RunData }) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-bold text-foreground">AIM-OS</span>
             <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-mono">{runData.runId.slice(0, 12)}</Badge>
+            <ComplexityBadge complexity={runData.overallComplexity} />
             {runData.status === 'complete' && (
               <Badge className="text-[9px] h-4 px-1.5 bg-[hsl(var(--status-success))]/20 text-[hsl(var(--status-success))] border-[hsl(var(--status-success))]/30">
                 ✅ {doneCount}/{totalCount} tasks • avg {avgScore}/100
