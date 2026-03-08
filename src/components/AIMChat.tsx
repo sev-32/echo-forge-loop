@@ -216,6 +216,7 @@ function TaskCard({ task, isExpanded, onToggle }: { task: TaskPlan; isExpanded: 
         ) : <div className="w-3" />}
         <TaskStatusBadge status={task.status} />
         <span className="text-xs font-medium text-foreground flex-1 truncate">{task.title}</span>
+        <DetailLevelBadge level={task.detailLevel} />
         {task.verification && (
           <Badge variant={task.verification.passed ? 'default' : 'destructive'} className="text-[9px] h-4 px-1.5 font-mono">
             {task.verification.score}/100
