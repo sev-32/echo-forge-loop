@@ -167,10 +167,12 @@ async function streamAIMOS({
   onKnowledgeUpdate, onRunComplete, onError,
   onTaskRetryStart, onTaskRetryDiagnosis, onProcessEvaluation, onRulesGenerated,
   onThinking, onMemoryDetail, onOpenQuestions,
+  onAuditStart, onAuditDecision, onAuditLoopStart,
+  onSynthesisStart, onSynthesisComplete,
 }: {
   conversationHistory: { role: string; content: string }[];
   onPlan: (data: any) => void;
-  onTaskStart: (taskIndex: number, taskId: string, title: string) => void;
+  onTaskStart: (taskIndex: number, taskId: string, title: string, isAuditTask?: boolean) => void;
   onTaskDelta: (taskIndex: number, delta: string) => void;
   onTaskVerifyStart: (taskIndex: number) => void;
   onTaskVerified: (taskIndex: number, verification: any) => void;
@@ -188,6 +190,11 @@ async function streamAIMOS({
   onThinking: (phase: string, content: string) => void;
   onMemoryDetail: (data: MemoryDetail) => void;
   onOpenQuestions: (questions: string[]) => void;
+  onAuditStart: () => void;
+  onAuditDecision: (data: any) => void;
+  onAuditLoopStart: (loop: number, tasks: string[]) => void;
+  onSynthesisStart: () => void;
+  onSynthesisComplete: (data: any) => void;
 }) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
