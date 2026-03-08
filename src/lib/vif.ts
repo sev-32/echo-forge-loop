@@ -165,7 +165,7 @@ export class VerifiableIntelligenceFramework {
       bin,
       operation_type: params.operation_type,
       model_id: params.model_id,
-    });
+    } as any);
 
     return witness;
   }

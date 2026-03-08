@@ -96,7 +96,7 @@ export class CognitiveAnalysisSystem {
         uncertainty_awareness: params.uncertainty_awareness ?? 0.5,
         witness_id: params.witness_id ?? null,
         metadata: params.metadata ?? {},
-      })
+      } as any)
       .select()
       .single();
 

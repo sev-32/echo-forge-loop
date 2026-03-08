@@ -114,7 +114,7 @@ export class QuartetParityTracker {
         change_failure_rate: params.change_failure_rate,
         tier,
         metadata: params.metadata ?? {},
-      })
+      } as any)
       .select()
       .single();
 

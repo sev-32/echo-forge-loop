@@ -169,7 +169,7 @@ export class AdaptivePlanOrchestrationEngine {
 
       const { data: stepsData, error: stepsError } = await supabase
         .from('plan_steps')
-        .insert(stepInserts)
+        .insert(stepInserts as any)
         .select();
 
       if (stepsError) { console.error('APOE: steps creation error:', stepsError); }
