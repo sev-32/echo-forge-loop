@@ -123,7 +123,7 @@ export class SharedEvidenceGraph {
         witness_id: params.witness_id ?? null,
         run_id: params.run_id ?? null,
         metadata: params.metadata ?? {},
-      })
+      } as any)
       .select()
       .single();
 
