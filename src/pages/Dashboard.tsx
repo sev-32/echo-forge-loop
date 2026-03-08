@@ -11,12 +11,16 @@ import { AgentPanel } from '@/components/AgentPanel';
 import { RegressionDashboard } from '@/components/RegressionDashboard';
 import { KnowledgeGraphPanel } from '@/components/KnowledgeGraphPanel';
 import { RunHistoryPanel } from '@/components/RunHistoryPanel';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
+import { MemoryPanel } from '@/components/MemoryPanel';
+import { TrustPanel } from '@/components/TrustPanel';
+import { OrchestrationPanel } from '@/components/OrchestrationPanel';
+import { CognitionPanel } from '@/components/CognitionPanel';
+import { EvolutionPanel } from '@/components/EvolutionPanel';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  MessageSquare, LayoutDashboard, Brain, Bot, BarChart3,
+  MessageSquare, Brain, Bot, BarChart3,
   Network, Activity, FlaskConical, BookOpen, PanelRightOpen, PanelRightClose,
-  History
+  History, Database, ShieldCheck, Workflow, GitBranch
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -26,7 +30,6 @@ export default function Dashboard() {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
-      {/* Top bar */}
       <header className="bg-card border-b border-border px-3 py-1.5 flex items-center gap-3 flex-shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
@@ -35,17 +38,18 @@ export default function Dashboard() {
           <h1 className="text-xs font-bold gradient-text">AIM-OS</h1>
         </div>
 
-        {/* Tabs as top navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
           <TabsList className="bg-transparent h-7 gap-0 p-0">
             {[
               { value: 'chat', icon: MessageSquare, label: 'Chat' },
               { value: 'history', icon: History, label: 'Runs' },
-              { value: 'tasks', icon: LayoutDashboard, label: 'Tasks' },
-              { value: 'agents', icon: Bot, label: 'Agents' },
-              { value: 'knowledge', icon: Network, label: 'Knowledge' },
+              { value: 'memory', icon: Database, label: 'Memory' },
+              { value: 'trust', icon: ShieldCheck, label: 'Trust' },
+              { value: 'orchestration', icon: Workflow, label: 'APOE' },
+              { value: 'knowledge', icon: Network, label: 'Evidence' },
+              { value: 'cognition', icon: Brain, label: 'Cognition' },
+              { value: 'evolution', icon: GitBranch, label: 'Evolution' },
               { value: 'journal', icon: BookOpen, label: 'Journal' },
-              { value: 'regression', icon: BarChart3, label: 'Regression' },
               { value: 'events', icon: Activity, label: 'Events' },
               { value: 'tests', icon: FlaskConical, label: 'Tests' },
             ].map(tab => (
@@ -71,23 +75,17 @@ export default function Dashboard() {
         </Button>
       </header>
 
-      {/* Content area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Main content */}
         <div className="flex-1 overflow-hidden">
           {activeTab === 'chat' && <AIMChat />}
           {activeTab === 'history' && <RunHistoryPanel />}
-          {activeTab === 'tasks' && (
-            <div className="grid grid-cols-12 gap-3 h-full p-3">
-              <div className="col-span-5"><TaskQueuePanel /></div>
-              <div className="col-span-4"><EventLogPanel /></div>
-              <div className="col-span-3 space-y-3"><BudgetPanel /><ContextPanel /></div>
-            </div>
-          )}
-          {activeTab === 'agents' && <AgentPanel />}
+          {activeTab === 'memory' && <MemoryPanel />}
+          {activeTab === 'trust' && <TrustPanel />}
+          {activeTab === 'orchestration' && <OrchestrationPanel />}
           {activeTab === 'knowledge' && <KnowledgeGraphPanel />}
+          {activeTab === 'cognition' && <CognitionPanel />}
+          {activeTab === 'evolution' && <EvolutionPanel />}
           {activeTab === 'journal' && <div className="h-full p-3"><JournalPanel /></div>}
-          {activeTab === 'regression' && <RegressionDashboard />}
           {activeTab === 'events' && <div className="h-full p-3"><EventLogPanel /></div>}
           {activeTab === 'tests' && (
             <div className="h-full p-3 grid grid-cols-2 gap-3">
@@ -96,7 +94,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* System sidebar */}
         {sidebarOpen && (
           <div className="w-72 flex-shrink-0">
             <SystemSidebar />
