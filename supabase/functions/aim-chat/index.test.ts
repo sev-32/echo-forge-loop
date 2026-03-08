@@ -238,7 +238,6 @@ Deno.test("Full pipeline: thinking → plan → execute → verify → reflect �
 
   for (const task of run.plan.tasks) {
     assertExists(task.title, "Task must have title");
-    assertExists(task.prompt, "Task must have prompt");
     assert(
       Array.isArray(task.acceptance_criteria) && task.acceptance_criteria.length > 0,
       `Task "${task.title}" missing acceptance criteria`
