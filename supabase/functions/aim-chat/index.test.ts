@@ -426,7 +426,7 @@ Deno.test("Full pipeline: thinking → plan → execute → verify → reflect �
   console.log(`\n${"═".repeat(60)}`);
   console.log("  📊 EFFECTIVENESS REPORT");
   console.log(`${"═".repeat(60)}`);
-  console.log(`  Goal:               ${run.plan.goal_summary}`);
+  console.log(`  Goal:               ${planGoal}`);
   console.log(`  Complexity:         ${run.plan.overall_complexity}`);
   console.log(`  Tasks:              ${run.runComplete.tasks_passed}/${run.runComplete.task_count} passed`);
   console.log(`  Avg verify score:   ${avgScore}/100`);
