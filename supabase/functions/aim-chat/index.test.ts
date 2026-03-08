@@ -31,7 +31,7 @@ interface RunCapture {
 async function captureRun(goal: string, maxRetries = 3): Promise<RunCapture> {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     if (attempt > 0) {
-      const wait = 5000 * attempt;
+      const wait = 15000 * attempt;
       console.log(`  ⏳ Rate limited, waiting ${wait / 1000}s before retry ${attempt + 1}/${maxRetries}...`);
       await new Promise(r => setTimeout(r, wait));
     }
