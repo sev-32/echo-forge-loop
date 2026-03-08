@@ -14,6 +14,152 @@ export type Database = {
   }
   public: {
     Tables: {
+      atoms: {
+        Row: {
+          atom_type: Database["public"]["Enums"]["atom_type"]
+          content: string
+          content_hash: string
+          created_at: string
+          id: string
+          metadata: Json
+          provenance: Json
+          run_id: string | null
+          superseded_by: string | null
+          task_id: string | null
+          tokens_estimate: number
+          transaction_time: string
+          valid_time_end: string | null
+          valid_time_start: string
+        }
+        Insert: {
+          atom_type?: Database["public"]["Enums"]["atom_type"]
+          content: string
+          content_hash: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          provenance?: Json
+          run_id?: string | null
+          superseded_by?: string | null
+          task_id?: string | null
+          tokens_estimate?: number
+          transaction_time?: string
+          valid_time_end?: string | null
+          valid_time_start?: string
+        }
+        Update: {
+          atom_type?: Database["public"]["Enums"]["atom_type"]
+          content?: string
+          content_hash?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          provenance?: Json
+          run_id?: string | null
+          superseded_by?: string | null
+          task_id?: string | null
+          tokens_estimate?: number
+          transaction_time?: string
+          valid_time_end?: string | null
+          valid_time_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atoms_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "atoms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cognitive_snapshots: {
+        Row: {
+          active_concepts: string[]
+          attention_breadth: Database["public"]["Enums"]["attention_breadth"]
+          cognitive_load: number
+          cold_concepts: string[]
+          concept_churn_rate: number
+          created_at: string
+          drift_details: string | null
+          drift_detected: boolean
+          drift_score: number
+          failure_confidence: number | null
+          failure_details: string | null
+          failure_mode: Database["public"]["Enums"]["failure_mode"] | null
+          id: string
+          metadata: Json
+          plan_step_id: string | null
+          reasoning_depth: number
+          run_id: string
+          self_consistency_score: number
+          task_id: string | null
+          uncertainty_awareness: number
+          witness_id: string | null
+        }
+        Insert: {
+          active_concepts?: string[]
+          attention_breadth?: Database["public"]["Enums"]["attention_breadth"]
+          cognitive_load?: number
+          cold_concepts?: string[]
+          concept_churn_rate?: number
+          created_at?: string
+          drift_details?: string | null
+          drift_detected?: boolean
+          drift_score?: number
+          failure_confidence?: number | null
+          failure_details?: string | null
+          failure_mode?: Database["public"]["Enums"]["failure_mode"] | null
+          id?: string
+          metadata?: Json
+          plan_step_id?: string | null
+          reasoning_depth?: number
+          run_id: string
+          self_consistency_score?: number
+          task_id?: string | null
+          uncertainty_awareness?: number
+          witness_id?: string | null
+        }
+        Update: {
+          active_concepts?: string[]
+          attention_breadth?: Database["public"]["Enums"]["attention_breadth"]
+          cognitive_load?: number
+          cold_concepts?: string[]
+          concept_churn_rate?: number
+          created_at?: string
+          drift_details?: string | null
+          drift_detected?: boolean
+          drift_score?: number
+          failure_confidence?: number | null
+          failure_details?: string | null
+          failure_mode?: Database["public"]["Enums"]["failure_mode"] | null
+          id?: string
+          metadata?: Json
+          plan_step_id?: string | null
+          reasoning_depth?: number
+          run_id?: string
+          self_consistency_score?: number
+          task_id?: string | null
+          uncertainty_awareness?: number
+          witness_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cognitive_snapshots_plan_step_id_fkey"
+            columns: ["plan_step_id"]
+            isOneToOne: false
+            referencedRelation: "plan_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cognitive_snapshots_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       context_bank_entries: {
         Row: {
           bank_id: string
@@ -88,6 +234,159 @@ export type Database = {
         }
         Relationships: []
       }
+      contradictions: {
+        Row: {
+          created_at: string
+          detection_method: string
+          id: string
+          metadata: Json
+          node_a_id: string
+          node_b_id: string
+          resolution: string | null
+          resolution_reasoning: string | null
+          resolved_at: string | null
+          resolved_by_run_id: string | null
+          run_id: string | null
+          similarity_score: number
+          stance: string
+          witness_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detection_method?: string
+          id?: string
+          metadata?: Json
+          node_a_id: string
+          node_b_id: string
+          resolution?: string | null
+          resolution_reasoning?: string | null
+          resolved_at?: string | null
+          resolved_by_run_id?: string | null
+          run_id?: string | null
+          similarity_score?: number
+          stance?: string
+          witness_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detection_method?: string
+          id?: string
+          metadata?: Json
+          node_a_id?: string
+          node_b_id?: string
+          resolution?: string | null
+          resolution_reasoning?: string | null
+          resolved_at?: string | null
+          resolved_by_run_id?: string | null
+          run_id?: string | null
+          similarity_score?: number
+          stance?: string
+          witness_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contradictions_node_a_id_fkey"
+            columns: ["node_a_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contradictions_node_b_id_fkey"
+            columns: ["node_b_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contradictions_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dora_metrics: {
+        Row: {
+          change_failure_rate: number
+          created_at: string
+          deployment_frequency: number
+          id: string
+          lead_time_seconds: number
+          metadata: Json
+          restore_time_seconds: number
+          run_id: string
+          tier: string
+        }
+        Insert: {
+          change_failure_rate?: number
+          created_at?: string
+          deployment_frequency?: number
+          id?: string
+          lead_time_seconds?: number
+          metadata?: Json
+          restore_time_seconds?: number
+          run_id: string
+          tier?: string
+        }
+        Update: {
+          change_failure_rate?: number
+          created_at?: string
+          deployment_frequency?: number
+          id?: string
+          lead_time_seconds?: number
+          metadata?: Json
+          restore_time_seconds?: number
+          run_id?: string
+          tier?: string
+        }
+        Relationships: []
+      }
+      ece_tracking: {
+        Row: {
+          actual_accuracy: number | null
+          bin: number
+          created_at: string
+          id: string
+          model_id: string
+          operation_type: Database["public"]["Enums"]["vif_operation_type"]
+          predicted_confidence: number
+          run_id: string
+          witness_id: string | null
+        }
+        Insert: {
+          actual_accuracy?: number | null
+          bin?: number
+          created_at?: string
+          id?: string
+          model_id?: string
+          operation_type: Database["public"]["Enums"]["vif_operation_type"]
+          predicted_confidence: number
+          run_id: string
+          witness_id?: string | null
+        }
+        Update: {
+          actual_accuracy?: number | null
+          bin?: number
+          created_at?: string
+          id?: string
+          model_id?: string
+          operation_type?: Database["public"]["Enums"]["vif_operation_type"]
+          predicted_confidence?: number
+          run_id?: string
+          witness_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ece_tracking_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           created_at: string
@@ -115,6 +414,63 @@ export type Database = {
           id?: string
           payload?: Json
           run_id?: string
+        }
+        Relationships: []
+      }
+      execution_plans: {
+        Row: {
+          budget_config: Json
+          budget_used: Json
+          completed_at: string | null
+          completed_steps: number
+          complexity: string
+          created_at: string
+          failed_steps: number
+          gates_config: Json
+          goal: string
+          id: string
+          metadata: Json
+          plan_acl: Json
+          reasoning: string
+          run_id: string
+          status: Database["public"]["Enums"]["plan_status"]
+          total_steps: number
+        }
+        Insert: {
+          budget_config?: Json
+          budget_used?: Json
+          completed_at?: string | null
+          completed_steps?: number
+          complexity?: string
+          created_at?: string
+          failed_steps?: number
+          gates_config?: Json
+          goal?: string
+          id?: string
+          metadata?: Json
+          plan_acl?: Json
+          reasoning?: string
+          run_id: string
+          status?: Database["public"]["Enums"]["plan_status"]
+          total_steps?: number
+        }
+        Update: {
+          budget_config?: Json
+          budget_used?: Json
+          completed_at?: string | null
+          completed_steps?: number
+          complexity?: string
+          created_at?: string
+          failed_steps?: number
+          gates_config?: Json
+          goal?: string
+          id?: string
+          metadata?: Json
+          plan_acl?: Json
+          reasoning?: string
+          run_id?: string
+          status?: Database["public"]["Enums"]["plan_status"]
+          total_steps?: number
         }
         Relationships: []
       }
@@ -174,30 +530,42 @@ export type Database = {
       knowledge_edges: {
         Row: {
           created_at: string
+          edge_type: string
           id: string
           metadata: Json
           relation: string
+          run_id: string | null
           source_id: string
+          strength: number
           target_id: string
           weight: number
+          witness_id: string | null
         }
         Insert: {
           created_at?: string
+          edge_type?: string
           id?: string
           metadata?: Json
           relation?: string
+          run_id?: string | null
           source_id: string
+          strength?: number
           target_id: string
           weight?: number
+          witness_id?: string | null
         }
         Update: {
           created_at?: string
+          edge_type?: string
           id?: string
           metadata?: Json
           relation?: string
+          run_id?: string | null
           source_id?: string
+          strength?: number
           target_id?: string
           weight?: number
+          witness_id?: string | null
         }
         Relationships: [
           {
@@ -214,31 +582,203 @@ export type Database = {
             referencedRelation: "knowledge_nodes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "knowledge_edges_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       knowledge_nodes: {
         Row: {
+          atom_id: string | null
+          confidence: number
           created_at: string
+          evidence_type: string
           id: string
           label: string
           metadata: Json
           node_type: string
+          run_id: string | null
+          valid_time_end: string | null
+          valid_time_start: string | null
+          witness_id: string | null
         }
         Insert: {
+          atom_id?: string | null
+          confidence?: number
           created_at?: string
+          evidence_type?: string
           id?: string
           label: string
           metadata?: Json
           node_type?: string
+          run_id?: string | null
+          valid_time_end?: string | null
+          valid_time_start?: string | null
+          witness_id?: string | null
         }
         Update: {
+          atom_id?: string | null
+          confidence?: number
           created_at?: string
+          evidence_type?: string
           id?: string
           label?: string
           metadata?: Json
           node_type?: string
+          run_id?: string | null
+          valid_time_end?: string | null
+          valid_time_start?: string | null
+          witness_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_nodes_atom_id_fkey"
+            columns: ["atom_id"]
+            isOneToOne: false
+            referencedRelation: "atoms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_nodes_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memory_snapshots: {
+        Row: {
+          atom_count: number
+          atom_ids: string[]
+          created_at: string
+          id: string
+          metadata: Json
+          reason: string
+          run_id: string | null
+          snapshot_hash: string
+        }
+        Insert: {
+          atom_count?: number
+          atom_ids?: string[]
+          created_at?: string
+          id?: string
+          metadata?: Json
+          reason?: string
+          run_id?: string | null
+          snapshot_hash: string
+        }
+        Update: {
+          atom_count?: number
+          atom_ids?: string[]
+          created_at?: string
+          id?: string
+          metadata?: Json
+          reason?: string
+          run_id?: string | null
+          snapshot_hash?: string
         }
         Relationships: []
+      }
+      plan_steps: {
+        Row: {
+          assigned_role: Database["public"]["Enums"]["apoe_role"]
+          budget: Json
+          budget_used: Json
+          completed_at: string | null
+          created_at: string
+          depends_on: string[]
+          description: string
+          error: string | null
+          gate_before: Database["public"]["Enums"]["gate_type"] | null
+          gate_config: Json
+          gate_details: Json | null
+          gate_result: Database["public"]["Enums"]["gate_result"] | null
+          id: string
+          input_refs: string[]
+          metadata: Json
+          output_refs: string[]
+          plan_id: string
+          result: Json | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["step_status"]
+          step_index: number
+          step_type: Database["public"]["Enums"]["plan_step_type"]
+          title: string
+          witness_id: string | null
+        }
+        Insert: {
+          assigned_role: Database["public"]["Enums"]["apoe_role"]
+          budget?: Json
+          budget_used?: Json
+          completed_at?: string | null
+          created_at?: string
+          depends_on?: string[]
+          description?: string
+          error?: string | null
+          gate_before?: Database["public"]["Enums"]["gate_type"] | null
+          gate_config?: Json
+          gate_details?: Json | null
+          gate_result?: Database["public"]["Enums"]["gate_result"] | null
+          id?: string
+          input_refs?: string[]
+          metadata?: Json
+          output_refs?: string[]
+          plan_id: string
+          result?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["step_status"]
+          step_index?: number
+          step_type: Database["public"]["Enums"]["plan_step_type"]
+          title?: string
+          witness_id?: string | null
+        }
+        Update: {
+          assigned_role?: Database["public"]["Enums"]["apoe_role"]
+          budget?: Json
+          budget_used?: Json
+          completed_at?: string | null
+          created_at?: string
+          depends_on?: string[]
+          description?: string
+          error?: string | null
+          gate_before?: Database["public"]["Enums"]["gate_type"] | null
+          gate_config?: Json
+          gate_details?: Json | null
+          gate_result?: Database["public"]["Enums"]["gate_result"] | null
+          id?: string
+          input_refs?: string[]
+          metadata?: Json
+          output_refs?: string[]
+          plan_id?: string
+          result?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["step_status"]
+          step_index?: number
+          step_type?: Database["public"]["Enums"]["plan_step_type"]
+          title?: string
+          witness_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_steps_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "execution_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_steps_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       process_rules: {
         Row: {
@@ -278,6 +818,65 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      quartet_traces: {
+        Row: {
+          blast_radius: Json
+          code_hash: string
+          created_at: string
+          docs_hash: string
+          gate_result: Database["public"]["Enums"]["gate_result"]
+          gate_threshold: number
+          id: string
+          metadata: Json
+          parity_details: Json
+          parity_score: number
+          run_id: string
+          tests_hash: string
+          trace_hash: string
+          witness_id: string | null
+        }
+        Insert: {
+          blast_radius?: Json
+          code_hash?: string
+          created_at?: string
+          docs_hash?: string
+          gate_result?: Database["public"]["Enums"]["gate_result"]
+          gate_threshold?: number
+          id?: string
+          metadata?: Json
+          parity_details?: Json
+          parity_score?: number
+          run_id: string
+          tests_hash?: string
+          trace_hash?: string
+          witness_id?: string | null
+        }
+        Update: {
+          blast_radius?: Json
+          code_hash?: string
+          created_at?: string
+          docs_hash?: string
+          gate_result?: Database["public"]["Enums"]["gate_result"]
+          gate_threshold?: number
+          id?: string
+          metadata?: Json
+          parity_details?: Json
+          parity_score?: number
+          run_id?: string
+          tests_hash?: string
+          trace_hash?: string
+          witness_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quartet_traces_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       run_traces: {
         Row: {
@@ -492,6 +1091,86 @@ export type Database = {
         }
         Relationships: []
       }
+      witness_envelopes: {
+        Row: {
+          actual_accuracy: number | null
+          atom_id: string | null
+          confidence_band: Database["public"]["Enums"]["confidence_band"]
+          confidence_score: number
+          context_hash: string
+          created_at: string
+          ece_contribution: number | null
+          id: string
+          input_tokens: number
+          kappa_gate_result: Database["public"]["Enums"]["kappa_gate_result"]
+          kappa_threshold: number
+          latency_ms: number | null
+          metadata: Json
+          model_id: string
+          operation_type: Database["public"]["Enums"]["vif_operation_type"]
+          output_tokens: number
+          plan_step_id: string | null
+          prompt_hash: string
+          response_hash: string
+          run_id: string | null
+          task_id: string | null
+        }
+        Insert: {
+          actual_accuracy?: number | null
+          atom_id?: string | null
+          confidence_band?: Database["public"]["Enums"]["confidence_band"]
+          confidence_score?: number
+          context_hash?: string
+          created_at?: string
+          ece_contribution?: number | null
+          id?: string
+          input_tokens?: number
+          kappa_gate_result?: Database["public"]["Enums"]["kappa_gate_result"]
+          kappa_threshold?: number
+          latency_ms?: number | null
+          metadata?: Json
+          model_id?: string
+          operation_type: Database["public"]["Enums"]["vif_operation_type"]
+          output_tokens?: number
+          plan_step_id?: string | null
+          prompt_hash: string
+          response_hash: string
+          run_id?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          actual_accuracy?: number | null
+          atom_id?: string | null
+          confidence_band?: Database["public"]["Enums"]["confidence_band"]
+          confidence_score?: number
+          context_hash?: string
+          created_at?: string
+          ece_contribution?: number | null
+          id?: string
+          input_tokens?: number
+          kappa_gate_result?: Database["public"]["Enums"]["kappa_gate_result"]
+          kappa_threshold?: number
+          latency_ms?: number | null
+          metadata?: Json
+          model_id?: string
+          operation_type?: Database["public"]["Enums"]["vif_operation_type"]
+          output_tokens?: number
+          plan_step_id?: string | null
+          prompt_hash?: string
+          response_hash?: string
+          run_id?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "witness_envelopes_atom_id_fkey"
+            columns: ["atom_id"]
+            isOneToOne: false
+            referencedRelation: "atoms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -500,7 +1179,63 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      apoe_role:
+        | "planner"
+        | "retriever"
+        | "reasoner"
+        | "verifier"
+        | "builder"
+        | "critic"
+        | "operator"
+        | "witness"
+      atom_type:
+        | "text"
+        | "code"
+        | "decision"
+        | "reflection"
+        | "plan"
+        | "verification"
+        | "discovery"
+        | "constraint"
+        | "artifact"
+      attention_breadth: "narrow" | "normal" | "wide"
+      confidence_band: "A" | "B" | "C"
+      failure_mode:
+        | "categorization_error"
+        | "activation_gap"
+        | "procedure_gap"
+        | "blind_spot"
+        | "anchoring_bias"
+        | "confirmation_bias"
+        | "shortcut_taking"
+      gate_result: "pass" | "fail" | "warn" | "abstain"
+      gate_type: "quality" | "safety" | "policy"
+      kappa_gate_result: "pass" | "abstain" | "fail"
+      plan_status: "draft" | "active" | "completed" | "failed" | "cancelled"
+      plan_step_type:
+        | "retrieve"
+        | "reason"
+        | "build"
+        | "verify"
+        | "critique"
+        | "plan"
+        | "witness"
+        | "operate"
+      step_status:
+        | "pending"
+        | "active"
+        | "completed"
+        | "failed"
+        | "skipped"
+        | "blocked"
+      vif_operation_type:
+        | "plan"
+        | "execute"
+        | "verify"
+        | "reflect"
+        | "critique"
+        | "retrieve"
+        | "build"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -627,6 +1362,70 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      apoe_role: [
+        "planner",
+        "retriever",
+        "reasoner",
+        "verifier",
+        "builder",
+        "critic",
+        "operator",
+        "witness",
+      ],
+      atom_type: [
+        "text",
+        "code",
+        "decision",
+        "reflection",
+        "plan",
+        "verification",
+        "discovery",
+        "constraint",
+        "artifact",
+      ],
+      attention_breadth: ["narrow", "normal", "wide"],
+      confidence_band: ["A", "B", "C"],
+      failure_mode: [
+        "categorization_error",
+        "activation_gap",
+        "procedure_gap",
+        "blind_spot",
+        "anchoring_bias",
+        "confirmation_bias",
+        "shortcut_taking",
+      ],
+      gate_result: ["pass", "fail", "warn", "abstain"],
+      gate_type: ["quality", "safety", "policy"],
+      kappa_gate_result: ["pass", "abstain", "fail"],
+      plan_status: ["draft", "active", "completed", "failed", "cancelled"],
+      plan_step_type: [
+        "retrieve",
+        "reason",
+        "build",
+        "verify",
+        "critique",
+        "plan",
+        "witness",
+        "operate",
+      ],
+      step_status: [
+        "pending",
+        "active",
+        "completed",
+        "failed",
+        "skipped",
+        "blocked",
+      ],
+      vif_operation_type: [
+        "plan",
+        "execute",
+        "verify",
+        "reflect",
+        "critique",
+        "retrieve",
+        "build",
+      ],
+    },
   },
 } as const
