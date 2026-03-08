@@ -44,6 +44,7 @@ interface RunData {
   runId: string;
   goal: string;
   approach: string;
+  overallComplexity: 'simple' | 'moderate' | 'complex' | 'research-grade';
   tasks: TaskPlan[];
   reflection: ReflectionData | null;
   knowledgeUpdate: { nodes_added: number; edges_added: number } | null;
