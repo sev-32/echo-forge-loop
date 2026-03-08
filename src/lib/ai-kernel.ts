@@ -140,8 +140,14 @@ export class AIOrchestrationKernel {
     this.totalTokensUsed += tokensUsed;
     governor.recordTokens(tokensUsed);
 
-    eventStore.appendEvent(this.state.run_id, 'PLAN_CREATED', { task_id: task.task_id, plan: stepResult.plan });
-    eventStore.appendEvent(this.state.run_id, 'ACTION_EXECUTED', { task_id: task.task_id, result: stepResult.result, confidence: stepResult.self_assessment.confidence });
+    const planPayload = { task_id: task.task_id, plan: stepResult.plan };
+    const execPayload = { task_id: task.task_id, result: stepResult.result, confidence: stepResult.self_assessment.confidence };
+    eventStore.appendEvent(this.state.run_id, 'PLAN_CREATED', planPayload);
+    eventStore.appendEvent(this.state.run_id, 'ACTION_EXECUTED', execPayload);
+    if (this.config.persistToCloud) {
+      await persistence.persistEvent(this.state.run_id, 'PLAN_CREATED', planPayload);
+      await persistence.persistEvent(this.state.run_id, 'ACTION_EXECUTED', execPayload);
+    }
 
     this.emitActivity('execute', `Executed with ${stepResult.plan.steps.length} steps (confidence: ${Math.round(stepResult.self_assessment.confidence * 100)}%)`, { task_id: task.task_id, tokens: tokensUsed });
 
