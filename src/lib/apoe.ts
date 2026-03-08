@@ -140,7 +140,7 @@ export class AdaptivePlanOrchestrationEngine {
         gates_config: params.gates_config ?? { quality_threshold: 0.7, safety_enabled: true },
         total_steps: params.steps?.length ?? 0,
         status: 'draft',
-      })
+      } as any)
       .select()
       .single();
 
