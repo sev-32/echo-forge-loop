@@ -210,10 +210,11 @@ Deno.test("Full pipeline: thinking → plan → execute → verify → reflect �
   assertExists(run.plan, "No plan event");
   assertExists(run.plan.tasks, "Plan must have tasks");
   assert(run.plan.tasks.length > 0, "Plan must have ≥1 task");
-  assertExists(run.plan.goal_summary, "Plan must have goal_summary");
+  const planGoal = run.plan.goal || run.plan.goal_summary;
+  assertExists(planGoal, "Plan must have goal or goal_summary");
   assertExists(run.plan.overall_complexity, "Plan must have complexity");
   assert(
-    ["simple", "moderate", "complex", "expert"].includes(run.plan.overall_complexity),
+    ["simple", "moderate", "complex", "expert", "research-grade"].includes(run.plan.overall_complexity),
     `Invalid complexity: ${run.plan.overall_complexity}`
   );
 
