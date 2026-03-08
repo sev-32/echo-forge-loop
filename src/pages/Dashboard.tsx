@@ -1,116 +1,103 @@
 import { useState } from 'react';
 import { AIMChat } from '@/components/AIMChat';
+import { SystemSidebar } from '@/components/SystemSidebar';
 import { TaskQueuePanel } from '@/components/TaskQueuePanel';
 import { EventLogPanel } from '@/components/EventLogPanel';
 import { BudgetPanel } from '@/components/BudgetPanel';
-import { TestHarnessPanel } from '@/components/TestHarnessPanel';
 import { ContextPanel } from '@/components/ContextPanel';
 import { JournalPanel } from '@/components/JournalPanel';
 import { TestAuditPanel } from '@/components/TestAuditPanel';
-import { LiveActivityPanel } from '@/components/LiveActivityPanel';
 import { AgentPanel } from '@/components/AgentPanel';
 import { RegressionDashboard } from '@/components/RegressionDashboard';
 import { KnowledgeGraphPanel } from '@/components/KnowledgeGraphPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, LayoutDashboard, Brain, Bot, BarChart3, Network, Activity, FlaskConical, ShieldCheck, BookOpen } from 'lucide-react';
+import {
+  MessageSquare, LayoutDashboard, Brain, Bot, BarChart3,
+  Network, Activity, FlaskConical, BookOpen, PanelRightOpen, PanelRightClose
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('chat');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Compact header */}
-      <header className="bg-card border-b border-border px-4 py-2">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded bg-primary flex items-center justify-center">
-            <Brain className="h-4 w-4 text-primary-foreground" />
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
+      {/* Top bar */}
+      <header className="bg-card border-b border-border px-3 py-1.5 flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
+            <Brain className="h-3.5 w-3.5 text-primary-foreground" />
           </div>
-          <h1 className="text-sm font-bold text-foreground">AIM-OS</h1>
-          <Badge variant="outline" className="text-[10px] font-mono">Self-Evolving AI Operating System</Badge>
+          <h1 className="text-xs font-bold gradient-text">AIM-OS</h1>
         </div>
+
+        {/* Tabs as top navigation */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+          <TabsList className="bg-transparent h-7 gap-0 p-0">
+            {[
+              { value: 'chat', icon: MessageSquare, label: 'Chat' },
+              { value: 'tasks', icon: LayoutDashboard, label: 'Tasks' },
+              { value: 'agents', icon: Bot, label: 'Agents' },
+              { value: 'knowledge', icon: Network, label: 'Knowledge' },
+              { value: 'journal', icon: BookOpen, label: 'Journal' },
+              { value: 'regression', icon: BarChart3, label: 'Regression' },
+              { value: 'events', icon: Activity, label: 'Events' },
+              { value: 'tests', icon: FlaskConical, label: 'Tests' },
+            ].map(tab => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="text-[10px] gap-1 px-2 py-1 h-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-md"
+              >
+                <tab.icon className="h-3 w-3" /> {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          title={sidebarOpen ? 'Hide system panel' : 'Show system panel'}
+        >
+          {sidebarOpen ? <PanelRightClose className="h-3.5 w-3.5" /> : <PanelRightOpen className="h-3.5 w-3.5" />}
+        </Button>
       </header>
 
-      <div className="flex-1 overflow-hidden">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <div className="border-b border-border bg-card px-4">
-            <TabsList className="bg-transparent h-9 gap-0">
-              <TabsTrigger value="chat" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary">
-                <MessageSquare className="h-3 w-3" /> Chat
-              </TabsTrigger>
-              <TabsTrigger value="orchestration" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary">
-                <LayoutDashboard className="h-3 w-3" /> Tasks
-              </TabsTrigger>
-              <TabsTrigger value="agents" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary">
-                <Bot className="h-3 w-3" /> Agents
-              </TabsTrigger>
-              <TabsTrigger value="knowledge" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary">
-                <Network className="h-3 w-3" /> Knowledge
-              </TabsTrigger>
-              <TabsTrigger value="journal" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary">
-                <BookOpen className="h-3 w-3" /> Journal
-              </TabsTrigger>
-              <TabsTrigger value="regression" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary">
-                <BarChart3 className="h-3 w-3" /> Regression
-              </TabsTrigger>
-              <TabsTrigger value="events" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary">
-                <Activity className="h-3 w-3" /> Events
-              </TabsTrigger>
-              <TabsTrigger value="tests" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary">
-                <FlaskConical className="h-3 w-3" /> Tests
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          {/* CHAT - Primary interface */}
-          <TabsContent value="chat" className="flex-1 mt-0 min-h-0">
-            <div className="h-[calc(100vh-90px)]">
-              <AIMChat />
-            </div>
-          </TabsContent>
-
-          {/* Orchestration / Tasks */}
-          <TabsContent value="orchestration" className="flex-1 mt-0 min-h-0">
-            <div className="grid grid-cols-12 gap-4 h-[calc(100vh-90px)] p-4">
+      {/* Content area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Main content */}
+        <div className="flex-1 overflow-hidden">
+          {activeTab === 'chat' && <AIMChat />}
+          {activeTab === 'tasks' && (
+            <div className="grid grid-cols-12 gap-3 h-full p-3">
               <div className="col-span-5"><TaskQueuePanel /></div>
               <div className="col-span-4"><EventLogPanel /></div>
-              <div className="col-span-3 space-y-4"><BudgetPanel /><ContextPanel /></div>
+              <div className="col-span-3 space-y-3"><BudgetPanel /><ContextPanel /></div>
             </div>
-          </TabsContent>
-
-          {/* Agents */}
-          <TabsContent value="agents" className="flex-1 mt-0 min-h-0 data-[state=inactive]:hidden" forceMount>
-            <div className="h-[calc(100vh-90px)] border-t border-border"><AgentPanel /></div>
-          </TabsContent>
-
-          {/* Knowledge Graph */}
-          <TabsContent value="knowledge" className="flex-1 mt-0 min-h-0">
-            <div className="h-[calc(100vh-90px)]"><KnowledgeGraphPanel /></div>
-          </TabsContent>
-
-          {/* Journal */}
-          <TabsContent value="journal" className="flex-1 mt-0 min-h-0">
-            <div className="h-[calc(100vh-90px)] p-4"><JournalPanel /></div>
-          </TabsContent>
-
-          {/* Regression */}
-          <TabsContent value="regression" className="flex-1 mt-0 min-h-0">
-            <div className="h-[calc(100vh-90px)]"><RegressionDashboard /></div>
-          </TabsContent>
-
-          {/* Events */}
-          <TabsContent value="events" className="flex-1 mt-0 min-h-0">
-            <div className="h-[calc(100vh-90px)] p-4"><EventLogPanel /></div>
-          </TabsContent>
-
-          {/* Tests */}
-          <TabsContent value="tests" className="flex-1 mt-0 min-h-0">
-            <div className="h-[calc(100vh-90px)] p-4 grid grid-cols-2 gap-4">
-              <TestHarnessPanel />
+          )}
+          {activeTab === 'agents' && <AgentPanel />}
+          {activeTab === 'knowledge' && <KnowledgeGraphPanel />}
+          {activeTab === 'journal' && <div className="h-full p-3"><JournalPanel /></div>}
+          {activeTab === 'regression' && <RegressionDashboard />}
+          {activeTab === 'events' && <div className="h-full p-3"><EventLogPanel /></div>}
+          {activeTab === 'tests' && (
+            <div className="h-full p-3 grid grid-cols-2 gap-3">
               <TestAuditPanel />
             </div>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
+
+        {/* System sidebar */}
+        {sidebarOpen && (
+          <div className="w-72 flex-shrink-0">
+            <SystemSidebar />
+          </div>
+        )}
       </div>
     </div>
   );
