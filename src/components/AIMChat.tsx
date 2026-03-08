@@ -444,7 +444,7 @@ export function AIMChat() {
     const assistantId = crypto.randomUUID();
     const assistantMsg: ChatMessage = {
       id: assistantId, role: 'assistant', content: '', timestamp: Date.now(),
-      runData: { runId: '', goal: text.trim(), approach: '', tasks: [], reflection: null, knowledgeUpdate: null, status: 'planning', totalTokens: 0 },
+      runData: { runId: '', goal: text.trim(), approach: '', overallComplexity: 'moderate', tasks: [], reflection: null, knowledgeUpdate: null, status: 'planning', totalTokens: 0 },
     };
 
     setMessages(prev => [...prev, userMsg, assistantMsg]);
