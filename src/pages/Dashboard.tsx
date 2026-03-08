@@ -76,6 +76,7 @@ export default function Dashboard() {
         {/* Main content */}
         <div className="flex-1 overflow-hidden">
           {activeTab === 'chat' && <AIMChat />}
+          {activeTab === 'history' && <RunHistoryPanel />}
           {activeTab === 'tasks' && (
             <div className="grid grid-cols-12 gap-3 h-full p-3">
               <div className="col-span-5"><TaskQueuePanel /></div>
