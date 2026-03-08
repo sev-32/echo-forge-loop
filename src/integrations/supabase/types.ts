@@ -73,6 +73,93 @@ export type Database = {
           },
         ]
       }
+      cognitive_snapshots: {
+        Row: {
+          active_concepts: string[]
+          attention_breadth: Database["public"]["Enums"]["attention_breadth"]
+          cognitive_load: number
+          cold_concepts: string[]
+          concept_churn_rate: number
+          created_at: string
+          drift_details: string | null
+          drift_detected: boolean
+          drift_score: number
+          failure_confidence: number | null
+          failure_details: string | null
+          failure_mode: Database["public"]["Enums"]["failure_mode"] | null
+          id: string
+          metadata: Json
+          plan_step_id: string | null
+          reasoning_depth: number
+          run_id: string
+          self_consistency_score: number
+          task_id: string | null
+          uncertainty_awareness: number
+          witness_id: string | null
+        }
+        Insert: {
+          active_concepts?: string[]
+          attention_breadth?: Database["public"]["Enums"]["attention_breadth"]
+          cognitive_load?: number
+          cold_concepts?: string[]
+          concept_churn_rate?: number
+          created_at?: string
+          drift_details?: string | null
+          drift_detected?: boolean
+          drift_score?: number
+          failure_confidence?: number | null
+          failure_details?: string | null
+          failure_mode?: Database["public"]["Enums"]["failure_mode"] | null
+          id?: string
+          metadata?: Json
+          plan_step_id?: string | null
+          reasoning_depth?: number
+          run_id: string
+          self_consistency_score?: number
+          task_id?: string | null
+          uncertainty_awareness?: number
+          witness_id?: string | null
+        }
+        Update: {
+          active_concepts?: string[]
+          attention_breadth?: Database["public"]["Enums"]["attention_breadth"]
+          cognitive_load?: number
+          cold_concepts?: string[]
+          concept_churn_rate?: number
+          created_at?: string
+          drift_details?: string | null
+          drift_detected?: boolean
+          drift_score?: number
+          failure_confidence?: number | null
+          failure_details?: string | null
+          failure_mode?: Database["public"]["Enums"]["failure_mode"] | null
+          id?: string
+          metadata?: Json
+          plan_step_id?: string | null
+          reasoning_depth?: number
+          run_id?: string
+          self_consistency_score?: number
+          task_id?: string | null
+          uncertainty_awareness?: number
+          witness_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cognitive_snapshots_plan_step_id_fkey"
+            columns: ["plan_step_id"]
+            isOneToOne: false
+            referencedRelation: "plan_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cognitive_snapshots_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       context_bank_entries: {
         Row: {
           bank_id: string
@@ -219,6 +306,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dora_metrics: {
+        Row: {
+          change_failure_rate: number
+          created_at: string
+          deployment_frequency: number
+          id: string
+          lead_time_seconds: number
+          metadata: Json
+          restore_time_seconds: number
+          run_id: string
+          tier: string
+        }
+        Insert: {
+          change_failure_rate?: number
+          created_at?: string
+          deployment_frequency?: number
+          id?: string
+          lead_time_seconds?: number
+          metadata?: Json
+          restore_time_seconds?: number
+          run_id: string
+          tier?: string
+        }
+        Update: {
+          change_failure_rate?: number
+          created_at?: string
+          deployment_frequency?: number
+          id?: string
+          lead_time_seconds?: number
+          metadata?: Json
+          restore_time_seconds?: number
+          run_id?: string
+          tier?: string
+        }
+        Relationships: []
       }
       ece_tracking: {
         Row: {
@@ -696,6 +819,65 @@ export type Database = {
         }
         Relationships: []
       }
+      quartet_traces: {
+        Row: {
+          blast_radius: Json
+          code_hash: string
+          created_at: string
+          docs_hash: string
+          gate_result: Database["public"]["Enums"]["gate_result"]
+          gate_threshold: number
+          id: string
+          metadata: Json
+          parity_details: Json
+          parity_score: number
+          run_id: string
+          tests_hash: string
+          trace_hash: string
+          witness_id: string | null
+        }
+        Insert: {
+          blast_radius?: Json
+          code_hash?: string
+          created_at?: string
+          docs_hash?: string
+          gate_result?: Database["public"]["Enums"]["gate_result"]
+          gate_threshold?: number
+          id?: string
+          metadata?: Json
+          parity_details?: Json
+          parity_score?: number
+          run_id: string
+          tests_hash?: string
+          trace_hash?: string
+          witness_id?: string | null
+        }
+        Update: {
+          blast_radius?: Json
+          code_hash?: string
+          created_at?: string
+          docs_hash?: string
+          gate_result?: Database["public"]["Enums"]["gate_result"]
+          gate_threshold?: number
+          id?: string
+          metadata?: Json
+          parity_details?: Json
+          parity_score?: number
+          run_id?: string
+          tests_hash?: string
+          trace_hash?: string
+          witness_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quartet_traces_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       run_traces: {
         Row: {
           approach: string
@@ -1016,7 +1198,16 @@ export type Database = {
         | "discovery"
         | "constraint"
         | "artifact"
+      attention_breadth: "narrow" | "normal" | "wide"
       confidence_band: "A" | "B" | "C"
+      failure_mode:
+        | "categorization_error"
+        | "activation_gap"
+        | "procedure_gap"
+        | "blind_spot"
+        | "anchoring_bias"
+        | "confirmation_bias"
+        | "shortcut_taking"
       gate_result: "pass" | "fail" | "warn" | "abstain"
       gate_type: "quality" | "safety" | "policy"
       kappa_gate_result: "pass" | "abstain" | "fail"
@@ -1193,7 +1384,17 @@ export const Constants = {
         "constraint",
         "artifact",
       ],
+      attention_breadth: ["narrow", "normal", "wide"],
       confidence_band: ["A", "B", "C"],
+      failure_mode: [
+        "categorization_error",
+        "activation_gap",
+        "procedure_gap",
+        "blind_spot",
+        "anchoring_bias",
+        "confirmation_bias",
+        "shortcut_taking",
+      ],
       gate_result: ["pass", "fail", "warn", "abstain"],
       gate_type: ["quality", "safety", "policy"],
       kappa_gate_result: ["pass", "abstain", "fail"],
