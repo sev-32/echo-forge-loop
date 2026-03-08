@@ -108,7 +108,9 @@ Assess the goal's complexity and calibrate:
 - detail_level, expected_sections, depth_guidance, acceptance_criteria
 - Priorities: 90-100 = critical, 70-89 = high, 50-69 = medium
 
-Apply any active process rules from memory. Note which rules you're applying.`
+Apply any active process rules from memory. Note which rules you're applying.
+
+IMPORTANT: In your planning_reasoning, explain your thought process — why this complexity level, why these specific tasks, what tradeoffs you considered, what questions you have about the goal (even if you proceed with your best judgment).`
       },
       { role: "user", content: lastUserMsg }
     ], [{
@@ -122,6 +124,8 @@ Apply any active process rules from memory. Note which rules you're applying.`
             goal_summary: { type: "string" },
             overall_complexity: { type: "string", enum: ["simple", "moderate", "complex", "research-grade"] },
             approach: { type: "string" },
+            planning_reasoning: { type: "string", description: "Detailed internal reasoning: why this complexity, why these tasks, tradeoffs considered, open questions about the goal" },
+            open_questions: { type: "array", items: { type: "string" }, description: "Questions about the goal that you're proceeding without answers to — things you'd ask the user if you could" },
             applied_rules: { type: "array", items: { type: "string" }, description: "IDs of process rules applied in planning" },
             lessons_incorporated: { type: "array", items: { type: "string" }, description: "Brief notes on past lessons used" },
             tasks: {
@@ -136,13 +140,14 @@ Apply any active process rules from memory. Note which rules you're applying.`
                   expected_sections: { type: "number" },
                   depth_guidance: { type: "string" },
                   acceptance_criteria: { type: "array", items: { type: "string" } },
-                  depends_on: { type: "array", items: { type: "number" } }
+                  depends_on: { type: "array", items: { type: "number" } },
+                  reasoning: { type: "string", description: "Why this task exists, what role it plays in the plan" }
                 },
                 required: ["title", "prompt", "priority", "detail_level", "expected_sections", "depth_guidance", "acceptance_criteria"]
               }
             }
           },
-          required: ["goal_summary", "overall_complexity", "approach", "tasks"]
+          required: ["goal_summary", "overall_complexity", "approach", "planning_reasoning", "tasks"]
         }
       }
     }], { type: "function", function: { name: "create_task_plan" } });
@@ -159,7 +164,7 @@ Apply any active process rules from memory. Note which rules you're applying.`
     try {
       plan = parseToolArgs(planData);
     } catch {
-      plan = { goal_summary: lastUserMsg, approach: "Direct execution", overall_complexity: "moderate", tasks: [{ title: "Execute goal", prompt: lastUserMsg, priority: 80, detail_level: "standard", expected_sections: 4, depth_guidance: "Standard depth", acceptance_criteria: ["Goal accomplished"] }] };
+      plan = { goal_summary: lastUserMsg, approach: "Direct execution", overall_complexity: "moderate", planning_reasoning: "Fallback plan", tasks: [{ title: "Execute goal", prompt: lastUserMsg, priority: 80, detail_level: "standard", expected_sections: 4, depth_guidance: "Standard depth", acceptance_criteria: ["Goal accomplished"] }] };
     }
 
     // Persist tasks
@@ -195,16 +200,76 @@ Apply any active process rules from memory. Note which rules you're applying.`
           catch { closed = true; }
         };
 
+        // ─── THINKING: Memory phase ───
+        send({ type: 'thinking', phase: 'memory', content: 'Searching cross-run memory banks...' });
+
+        const reflCount = (pastReflections.data || []).length;
+        const rulesCount = (processRules.data || []).length;
+        const knowledgeCount = (recentKnowledge.data || []).length;
+
+        if (reflCount > 0 || rulesCount > 0 || knowledgeCount > 0) {
+          send({ type: 'thinking', phase: 'memory', content: `Found ${reflCount} past reflections, ${rulesCount} active process rules, ${knowledgeCount} knowledge concepts.` });
+          
+          // Send individual memory items
+          send({
+            type: 'memory_detail',
+            reflections: (pastReflections.data || []).map((r: any) => ({
+              content: r.content?.slice(0, 300),
+              tags: r.tags,
+              planning_score: r.metadata?.planning_score,
+              strategy_score: r.metadata?.strategy_score,
+            })),
+            rules: (processRules.data || []).map((r: any) => ({
+              id: r.id,
+              text: r.rule_text,
+              category: r.category,
+              confidence: r.confidence,
+              times_applied: r.times_applied,
+              times_helped: r.times_helped,
+            })),
+            knowledge: (recentKnowledge.data || []).map((n: any) => ({
+              label: n.label,
+              type: n.node_type,
+            })),
+          });
+
+          if (rulesCount > 0) {
+            send({ type: 'thinking', phase: 'memory', content: `Loading ${rulesCount} process rules to guide planning. Top rule: "${(processRules.data || [])[0]?.rule_text?.slice(0, 100)}"` });
+          }
+        } else {
+          send({ type: 'thinking', phase: 'memory', content: 'No prior memory found. This is a fresh start — I\'ll build knowledge from this run.' });
+        }
+
+        // ─── THINKING: Planning phase ───
+        send({ type: 'thinking', phase: 'planning', content: `Analyzing goal: "${lastUserMsg.slice(0, 120)}${lastUserMsg.length > 120 ? '...' : ''}"` });
+        send({ type: 'thinking', phase: 'planning', content: `Goal assessed as ${plan.overall_complexity || 'moderate'} complexity. Designing ${plan.tasks.length} tasks.` });
+
+        if (plan.planning_reasoning) {
+          send({ type: 'thinking', phase: 'planning', content: plan.planning_reasoning });
+        }
+
+        if (plan.open_questions?.length > 0) {
+          send({ type: 'open_questions', questions: plan.open_questions });
+          send({ type: 'thinking', phase: 'planning', content: `I have ${plan.open_questions.length} open question(s) about this goal, but proceeding with my best judgment.` });
+        }
+
+        if (appliedRuleIds.length > 0) {
+          send({ type: 'thinking', phase: 'planning', content: `Applied ${appliedRuleIds.length} process rule(s) from past experience.` });
+        }
+
+        // ─── Send plan ───
         send({
           type: 'plan',
           run_id: runId,
           goal: plan.goal_summary,
           approach: plan.approach,
           overall_complexity: plan.overall_complexity || 'moderate',
+          planning_reasoning: plan.planning_reasoning || '',
+          open_questions: plan.open_questions || [],
           memory_loaded: {
-            reflections: (pastReflections.data || []).length,
-            rules: (processRules.data || []).length,
-            knowledge: (recentKnowledge.data || []).length,
+            reflections: reflCount,
+            rules: rulesCount,
+            knowledge: knowledgeCount,
           },
           lessons_incorporated: plan.lessons_incorporated || [],
           tasks: plan.tasks.map((t: any, i: number) => ({
@@ -212,6 +277,9 @@ Apply any active process rules from memory. Note which rules you're applying.`
             criteria_count: t.acceptance_criteria.length,
             detail_level: t.detail_level || 'standard',
             expected_sections: t.expected_sections || 4,
+            reasoning: t.reasoning || '',
+            depth_guidance: t.depth_guidance || '',
+            acceptance_criteria: t.acceptance_criteria || [],
           })),
         });
 
@@ -227,12 +295,25 @@ Apply any active process rules from memory. Note which rules you're applying.`
           const taskId = taskIds[i];
 
           await supabase.from('tasks').update({ status: 'active' }).eq('id', taskId);
+          
+          // ─── THINKING: Task start ───
+          send({ type: 'thinking', phase: 'execute', content: `Starting task ${i+1}/${plan.tasks.length}: "${task.title}"` });
+          const detailLevel = task.detail_level || 'standard';
+          const model = detailLevel === 'exhaustive' ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview";
+          send({ type: 'thinking', phase: 'execute', content: `Detail level: ${detailLevel} • Model: ${model.split('/')[1]} • Expected sections: ${task.expected_sections || '?'}` });
+          if (task.reasoning) {
+            send({ type: 'thinking', phase: 'execute', content: `Task rationale: ${task.reasoning}` });
+          }
+
           send({ type: 'task_start', task_index: i, task_id: taskId, title: task.title });
 
           try {
-            const detailLevel = task.detail_level || 'standard';
             const contextSlice = detailLevel === 'exhaustive' ? 3000 : detailLevel === 'comprehensive' ? 2000 : detailLevel === 'standard' ? 1500 : 800;
             const prevContext = taskOutputs.map((out, j) => `[Task ${j+1}: ${plan.tasks[j].title}]\n${out.slice(0, contextSlice)}`).join('\n\n');
+
+            if (i > 0) {
+              send({ type: 'thinking', phase: 'execute', content: `Injecting ${i} previous task output(s) as context (${contextSlice} tokens each).` });
+            }
 
             // Execute task
             let taskOutput = await executeTask(LOVABLE_API_KEY, plan, task, i, detailLevel, prevContext, send, null);
@@ -244,11 +325,13 @@ Apply any active process rules from memory. Note which rules you're applying.`
               payload: { task_id: taskId, output_length: taskOutput.output.length, task_title: task.title },
             });
 
-            // Verify
+            // ─── THINKING: Verify ───
+            send({ type: 'thinking', phase: 'verify', content: `Verifying task ${i+1} against ${task.acceptance_criteria.length} acceptance criteria...` });
             send({ type: 'task_verify_start', task_index: i });
             let verification = await verifyTask(LOVABLE_API_KEY, task, taskOutput.output);
             totalTokens += verification.tokens;
 
+            send({ type: 'thinking', phase: 'verify', content: `Verification result: ${verification.result.passed ? 'PASSED' : 'FAILED'} (${verification.result.score}/100) — ${verification.result.summary}` });
             send({ type: 'task_verified', task_index: i, verification: verification.result });
 
             await supabase.from('events').insert({
@@ -259,14 +342,21 @@ Apply any active process rules from memory. Note which rules you're applying.`
 
             // ─── RETRY WITH ADAPTATION ───
             if (!verification.result.passed && verification.result.score < 70) {
+              send({ type: 'thinking', phase: 'retry', content: `Score ${verification.result.score}/100 is below 70 threshold. Initiating retry with adaptation.` });
+              const failedCriteria = (verification.result.criteria_results || []).filter((c: any) => !c.met);
+              send({ type: 'thinking', phase: 'retry', content: `${failedCriteria.length} criteria unmet: ${failedCriteria.map((c: any) => c.criterion).join(', ')}` });
+              
               send({ type: 'task_retry_start', task_index: i, reason: verification.result.summary });
 
               // Diagnose failure
+              send({ type: 'thinking', phase: 'retry', content: 'Analyzing failure to generate corrective diagnosis...' });
               const diagnosis = await diagnoseFailure(LOVABLE_API_KEY, task, taskOutput.output, verification.result);
               totalTokens += diagnosis.tokens;
+              send({ type: 'thinking', phase: 'retry', content: `Diagnosis: ${diagnosis.result.slice(0, 200)}` });
               send({ type: 'task_retry_diagnosis', task_index: i, diagnosis: diagnosis.result });
 
               // Re-execute with diagnosis context
+              send({ type: 'thinking', phase: 'retry', content: 'Re-executing task with corrective instructions...' });
               taskOutput = await executeTask(LOVABLE_API_KEY, plan, task, i, detailLevel, prevContext, send, diagnosis.result);
               totalTokens += taskOutput.tokens;
 
@@ -276,10 +366,12 @@ Apply any active process rules from memory. Note which rules you're applying.`
               });
 
               // Re-verify
+              send({ type: 'thinking', phase: 'verify', content: 'Re-verifying after retry...' });
               send({ type: 'task_verify_start', task_index: i });
               verification = await verifyTask(LOVABLE_API_KEY, task, taskOutput.output);
               totalTokens += verification.tokens;
 
+              send({ type: 'thinking', phase: 'verify', content: `Retry verification: ${verification.result.passed ? 'PASSED' : 'STILL FAILED'} (${verification.result.score}/100)` });
               send({ type: 'task_verified', task_index: i, verification: verification.result });
 
               await supabase.from('events').insert({
@@ -300,9 +392,11 @@ Apply any active process rules from memory. Note which rules you're applying.`
             }).eq('id', taskId);
 
             send({ type: 'task_complete', task_index: i, status: finalStatus });
+            send({ type: 'thinking', phase: 'execute', content: `Task ${i+1} ${finalStatus}. ${plan.tasks.length - i - 1} remaining.` });
 
           } catch (err: any) {
             console.error(`Task ${i} error:`, err);
+            send({ type: 'thinking', phase: 'execute', content: `⚠ Task ${i+1} threw error: ${err.message}` });
             await supabase.from('tasks').update({ status: 'failed', error: err.message }).eq('id', taskId);
             await supabase.from('events').insert({ run_id: runId, event_type: 'ERROR_RAISED', payload: { task_id: taskId, error: err.message } });
             send({ type: 'task_error', task_index: i, error: err.message });
@@ -314,9 +408,12 @@ Apply any active process rules from memory. Note which rules you're applying.`
         // ═══════════════════════════════════════════════════
         // PHASE 3: DEEP SELF-REFLECTION
         // ═══════════════════════════════════════════════════
+        send({ type: 'thinking', phase: 'reflect', content: 'All tasks complete. Entering deep meta-cognitive reflection...' });
         send({ type: 'reflection_start' });
 
         try {
+          send({ type: 'thinking', phase: 'reflect', content: 'Evaluating my own planning quality, strategy effectiveness, and detecting patterns...' });
+
           const pastReflectionsSummary = (pastReflections.data || []).map((r: any) => r.content?.slice(0, 300)).join('\n---\n');
           const activeRulesSummary = (processRules.data || []).map((r: any) => `[${r.id}] (conf: ${r.confidence}) ${r.rule_text}`).join('\n');
 
@@ -333,6 +430,8 @@ Apply any active process rules from memory. Note which rules you're applying.`
 5. **Generate process rules** — concrete, actionable rules for future runs
 6. **Extract knowledge** — key concepts as graph nodes/edges
 7. **Propose self-tests** — test cases to validate your improvements
+
+IMPORTANT: In your internal_monologue, write a stream-of-consciousness reflection. Be honest about what you're uncertain about, where you might have made mistakes, what surprised you.
 
 ## PAST REFLECTIONS FOR PATTERN DETECTION:
 ${pastReflectionsSummary || 'No past reflections yet.'}
@@ -361,6 +460,7 @@ ${plan.tasks.map((t: any, i: number) => `${i+1}. [${t.detail_level}] ${t.title}
               parameters: {
                 type: "object",
                 properties: {
+                  internal_monologue: { type: "string", description: "Stream-of-consciousness reflection — your raw thinking about how the run went, what you're uncertain about, what surprised you" },
                   summary: { type: "string", description: "2-4 sentence summary of accomplishments" },
                   process_evaluation: {
                     type: "object",
@@ -390,9 +490,9 @@ ${plan.tasks.map((t: any, i: number) => `${i+1}. [${t.detail_level}] ${t.title}
                     items: {
                       type: "object",
                       properties: {
-                        rule_text: { type: "string", description: "Concrete actionable rule e.g. 'When goal involves API design, always include an error handling task'" },
+                        rule_text: { type: "string" },
                         category: { type: "string", enum: ["planning", "execution", "verification", "detail_calibration", "general"] },
-                        confidence: { type: "number", description: "0.0-1.0 initial confidence" }
+                        confidence: { type: "number" }
                       },
                       required: ["rule_text", "category", "confidence"]
                     }
@@ -440,7 +540,7 @@ ${plan.tasks.map((t: any, i: number) => `${i+1}. [${t.detail_level}] ${t.title}
                   },
                   improvements: { type: "array", items: { type: "string" } }
                 },
-                required: ["summary", "process_evaluation", "strategy_assessment", "lessons", "knowledge_nodes", "new_process_rules"]
+                required: ["summary", "internal_monologue", "process_evaluation", "strategy_assessment", "lessons", "knowledge_nodes", "new_process_rules"]
               }
             }
           }], { type: "function", function: { name: "deep_reflect" } });
@@ -449,6 +549,18 @@ ${plan.tasks.map((t: any, i: number) => `${i+1}. [${t.detail_level}] ${t.title}
             const rData = await reflectResponse.json();
             if (rData.usage) totalTokens += rData.usage.total_tokens || 0;
             const reflection = parseToolArgs(rData);
+
+            // ─── THINKING: Reflection results ───
+            if (reflection.internal_monologue) {
+              send({ type: 'thinking', phase: 'reflect', content: reflection.internal_monologue });
+            }
+            send({ type: 'thinking', phase: 'reflect', content: `Self-evaluation: Planning ${reflection.process_evaluation?.planning_score}/100, Strategy ${reflection.strategy_assessment?.effectiveness_score}/100` });
+            if (reflection.detected_patterns?.length > 0) {
+              send({ type: 'thinking', phase: 'reflect', content: `Detected ${reflection.detected_patterns.length} pattern(s) across runs.` });
+            }
+            if (reflection.new_process_rules?.length > 0) {
+              send({ type: 'thinking', phase: 'reflect', content: `Generated ${reflection.new_process_rules.length} new process rule(s) for future runs.` });
+            }
 
             send({ type: 'reflection', data: reflection });
 
@@ -477,6 +589,7 @@ ${plan.tasks.map((t: any, i: number) => `${i+1}. [${t.detail_level}] ${t.title}
             });
 
             // ─── Persist knowledge graph ───
+            send({ type: 'thinking', phase: 'reflect', content: `Persisting ${(reflection.knowledge_nodes || []).length} knowledge nodes and ${(reflection.knowledge_edges || []).length} edges...` });
             const nodeMap: Record<string, string> = {};
             for (const node of reflection.knowledge_nodes || []) {
               const { data: saved } = await supabase.from('knowledge_nodes').insert({
@@ -501,6 +614,7 @@ ${plan.tasks.map((t: any, i: number) => `${i+1}. [${t.detail_level}] ${t.title}
             // ═══════════════════════════════════════════════
             // PHASE 4: UPDATE PROCESS RULES
             // ═══════════════════════════════════════════════
+            send({ type: 'thinking', phase: 'evolve', content: 'Updating process rules engine...' });
             const newRules = reflection.new_process_rules || [];
             const insertedRuleIds: string[] = [];
             for (const rule of newRules) {
@@ -516,8 +630,6 @@ ${plan.tasks.map((t: any, i: number) => `${i+1}. [${t.detail_level}] ${t.title}
             // Update confidence on applied rules
             for (const ruleEval of reflection.rules_effectiveness || []) {
               if (!ruleEval.rule_id) continue;
-              const updates: any = { times_applied: 1 }; // increment manually below
-              // Fetch current values
               const { data: current } = await supabase.from('process_rules').select('times_applied, times_helped, confidence').eq('id', ruleEval.rule_id).single();
               if (current) {
                 const newApplied = (current.times_applied || 0) + 1;
@@ -532,14 +644,18 @@ ${plan.tasks.map((t: any, i: number) => `${i+1}. [${t.detail_level}] ${t.title}
             }
 
             send({ type: 'rules_generated', rules: newRules.map((r: any, i: number) => ({ ...r, id: insertedRuleIds[i] })), rules_evaluated: (reflection.rules_effectiveness || []).length });
+            send({ type: 'thinking', phase: 'evolve', content: `Process evolution complete. ${newRules.length} new rule(s), ${(reflection.rules_effectiveness || []).length} rule(s) re-evaluated.` });
 
           }
         } catch (e) {
           console.error("Reflection error:", e);
+          send({ type: 'thinking', phase: 'reflect', content: `Reflection error: ${e instanceof Error ? e.message : 'unknown'}` });
           send({ type: 'reflection', data: { summary: "Reflection failed", lessons: [], knowledge_nodes: [], process_evaluation: null, strategy_assessment: null } });
         }
 
         // ─── Final stats ───
+        send({ type: 'thinking', phase: 'complete', content: `Run complete. ${plan.tasks.length} tasks, ${totalTokens.toLocaleString()} tokens used.` });
+
         await supabase.from('events').insert({
           run_id: runId, event_type: 'RUN_STOPPED',
           payload: { reason: 'completed', total_tokens: totalTokens, task_count: plan.tasks.length },
