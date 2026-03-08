@@ -823,46 +823,61 @@ Apply any active process rules from memory.`
 
         // ═══════════════════════════════════════════════════
         // PHASE 2.5: AUDIT — Self-review + decide next steps
+        // (Skipped for simple queries — fast path)
         // ═══════════════════════════════════════════════════
-        send({ type: 'thinking', phase: 'audit', content: 'Auditing all task outputs holistically...' });
-        send({ type: 'audit_start' });
-
         let auditDecision: any = null;
         let auditLoops = 0;
-        const MAX_AUDIT_LOOPS = 2;
 
-        // Load past run traces for style analysis
-        const { data: pastRuns } = await supabase.from('run_traces')
-          .select('goal, approach, overall_complexity, avg_score, reflection')
-          .order('created_at', { ascending: false }).limit(5);
+        if (isSimple) {
+          // Fast path: skip full audit
+          send({ type: 'thinking', phase: 'audit', content: 'Simple query — skipping detailed audit.' });
+          send({ type: 'audit_start' });
+          auditDecision = {
+            quality_verdict: 'sufficient', confidence: 0.8,
+            reasoning: 'Simple query — fast path.',
+            next_actions: [{ action: 'proceed', reason: 'simple query' }],
+            synthesis_plan: { structure: 'Direct', key_points: [], style_notes: 'Concise and clear' },
+            user_style_analysis: { tone: 'conversational', detail_preference: 'brief', patterns_observed: [] },
+          };
+          send({ type: 'audit_decision', verdict: 'sufficient', confidence: 0.8, reasoning: auditDecision.reasoning, style_analysis: auditDecision.user_style_analysis, next_actions: auditDecision.next_actions, synthesis_plan: auditDecision.synthesis_plan, additional_tasks_count: 0, loop: 0 });
+        } else {
+          send({ type: 'thinking', phase: 'audit', content: 'Auditing all task outputs holistically...' });
+          send({ type: 'audit_start' });
 
-        // Load active contradictions
-        const { data: activeContradictions } = await supabase.from('contradictions')
-          .select('metadata, stance, similarity_score')
-          .is('resolved_at', null).limit(10);
+          const MAX_AUDIT_LOOPS = 2;
 
-        while (auditLoops <= MAX_AUDIT_LOOPS) {
-          const auditStartMs = Date.now();
-          const allOutputsSummary = plan.tasks.map((t: any, i: number) =>
-            `Task ${i+1}: "${t.title}" [${t.detail_level}]\nScore: ${taskVerifications[i]?.score ?? '?'}/100 (${taskVerifications[i]?.passed ? 'PASS' : 'FAIL'})\nOutput excerpt: ${taskOutputs[i]?.slice(0, 800) || 'no output'}`
-          ).join('\n\n---\n\n');
+          // Load past run traces for style analysis
+          const { data: pastRuns } = await supabase.from('run_traces')
+            .select('goal, approach, overall_complexity, avg_score, reflection')
+            .order('created_at', { ascending: false }).limit(5);
 
-          const pastRunsSummary = (pastRuns || []).map((r: any) =>
-            `- "${r.goal?.slice(0, 80)}" [${r.overall_complexity}] avg:${r.avg_score}`
-          ).join('\n');
+          // Load active contradictions
+          const { data: activeContradictions } = await supabase.from('contradictions')
+            .select('metadata, stance, similarity_score')
+            .is('resolved_at', null).limit(10);
 
-          const contradictionsSummary = (activeContradictions || []).map((c: any) =>
-            `- ${c.metadata?.node_a_label} vs ${c.metadata?.node_b_label} (${c.stance})`
-          ).join('\n');
+          while (auditLoops <= MAX_AUDIT_LOOPS) {
+            const auditStartMs = Date.now();
+            const allOutputsSummary = plan.tasks.map((t: any, i: number) =>
+              `Task ${i+1}: "${t.title}" [${t.detail_level}]\nScore: ${taskVerifications[i]?.score ?? '?'}/100 (${taskVerifications[i]?.passed ? 'PASS' : 'FAIL'})\nOutput excerpt: ${taskOutputs[i]?.slice(0, 800) || 'no output'}`
+            ).join('\n\n---\n\n');
 
-          const conversationSummary = messages.slice(-6).map((m: any) =>
-            `[${m.role}]: ${m.content?.slice(0, 200)}`
-          ).join('\n');
+            const pastRunsSummary = (pastRuns || []).map((r: any) =>
+              `- "${r.goal?.slice(0, 80)}" [${r.overall_complexity}] avg:${r.avg_score}`
+            ).join('\n');
 
-          const auditResponse = await callAI(LOVABLE_API_KEY, "google/gemini-2.5-flash", [
-            {
-              role: "system",
-              content: `You are AIM-OS Auditor. Review ALL task outputs holistically. Consider conversation history, user patterns from past runs, and active contradictions. Decide if results are sufficient or need deepening.
+            const contradictionsSummary = (activeContradictions || []).map((c: any) =>
+              `- ${c.metadata?.node_a_label} vs ${c.metadata?.node_b_label} (${c.stance})`
+            ).join('\n');
+
+            const conversationSummary = messages.slice(-6).map((m: any) =>
+              `[${m.role}]: ${m.content?.slice(0, 200)}`
+            ).join('\n');
+
+            const auditResponse = await callAI(LOVABLE_API_KEY, "google/gemini-2.5-flash", [
+              {
+                role: "system",
+                content: `You are AIM-OS Auditor. Review ALL task outputs holistically. Consider conversation history, user patterns from past runs, and active contradictions. Decide if results are sufficient or need deepening.
 
 ## YOUR JOB:
 1. Evaluate quality of ALL outputs together — are they coherent, complete, well-structured?
@@ -881,181 +896,182 @@ ${contradictionsSummary || 'None.'}
 ${conversationSummary}
 
 ## AUDIT LOOP: ${auditLoops + 1} of ${MAX_AUDIT_LOOPS + 1} max`
-            },
-            {
-              role: "user",
-              content: `## Goal: ${plan.goal_summary}\n## Approach: ${plan.approach}\n## Complexity: ${plan.overall_complexity}\n\n## Task Outputs:\n${allOutputsSummary}`
-            }
-          ], [{
-            type: "function",
-            function: {
-              name: "audit_and_decide",
-              description: "Audit task outputs and decide next steps",
-              parameters: {
-                type: "object",
-                properties: {
-                  quality_verdict: { type: "string", enum: ["sufficient", "needs_deepening", "needs_restructuring"] },
-                  confidence: { type: "number", description: "0-1" },
-                  reasoning: { type: "string", description: "Internal monologue about what's good, what's missing, quality gaps" },
-                  user_style_analysis: {
-                    type: "object",
-                    properties: {
-                      tone: { type: "string", enum: ["formal", "conversational", "technical", "educational"] },
-                      detail_preference: { type: "string", enum: ["brief", "thorough", "exhaustive"] },
-                      patterns_observed: { type: "array", items: { type: "string" } },
-                    },
-                    required: ["tone", "detail_preference", "patterns_observed"]
-                  },
-                  next_actions: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        action: { type: "string", enum: ["proceed", "research_deeper", "refine", "expand"] },
-                        target: { type: "string" },
-                        reason: { type: "string" },
-                      },
-                      required: ["action", "reason"]
-                    }
-                  },
-                  additional_tasks: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        title: { type: "string" },
-                        prompt: { type: "string" },
-                        detail_level: { type: "string", enum: ["concise", "standard", "comprehensive", "exhaustive"] },
-                        acceptance_criteria: { type: "array", items: { type: "string" } },
-                      },
-                      required: ["title", "prompt", "detail_level", "acceptance_criteria"]
-                    }
-                  },
-                  synthesis_plan: {
-                    type: "object",
-                    properties: {
-                      structure: { type: "string", description: "How to organize the final response" },
-                      key_points: { type: "array", items: { type: "string" } },
-                      style_notes: { type: "string", description: "Tone/formatting guidance for synthesis" },
-                    },
-                    required: ["structure", "key_points", "style_notes"]
-                  },
-                },
-                required: ["quality_verdict", "confidence", "reasoning", "user_style_analysis", "next_actions", "synthesis_plan"]
+              },
+              {
+                role: "user",
+                content: `## Goal: ${plan.goal_summary}\n## Approach: ${plan.approach}\n## Complexity: ${plan.overall_complexity}\n\n## Task Outputs:\n${allOutputsSummary}`
               }
+            ], [{
+              type: "function",
+              function: {
+                name: "audit_and_decide",
+                description: "Audit task outputs and decide next steps",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    quality_verdict: { type: "string", enum: ["sufficient", "needs_deepening", "needs_restructuring"] },
+                    confidence: { type: "number", description: "0-1" },
+                    reasoning: { type: "string", description: "Internal monologue about what's good, what's missing, quality gaps" },
+                    user_style_analysis: {
+                      type: "object",
+                      properties: {
+                        tone: { type: "string", enum: ["formal", "conversational", "technical", "educational"] },
+                        detail_preference: { type: "string", enum: ["brief", "thorough", "exhaustive"] },
+                        patterns_observed: { type: "array", items: { type: "string" } },
+                      },
+                      required: ["tone", "detail_preference", "patterns_observed"]
+                    },
+                    next_actions: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          action: { type: "string", enum: ["proceed", "research_deeper", "refine", "expand"] },
+                          target: { type: "string" },
+                          reason: { type: "string" },
+                        },
+                        required: ["action", "reason"]
+                      }
+                    },
+                    additional_tasks: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          title: { type: "string" },
+                          prompt: { type: "string" },
+                          detail_level: { type: "string", enum: ["concise", "standard", "comprehensive", "exhaustive"] },
+                          acceptance_criteria: { type: "array", items: { type: "string" } },
+                        },
+                        required: ["title", "prompt", "detail_level", "acceptance_criteria"]
+                      }
+                    },
+                    synthesis_plan: {
+                      type: "object",
+                      properties: {
+                        structure: { type: "string", description: "How to organize the final response" },
+                        key_points: { type: "array", items: { type: "string" } },
+                        style_notes: { type: "string", description: "Tone/formatting guidance for synthesis" },
+                      },
+                      required: ["structure", "key_points", "style_notes"]
+                    },
+                  },
+                  required: ["quality_verdict", "confidence", "reasoning", "user_style_analysis", "next_actions", "synthesis_plan"]
+                }
+              }
+            }], { type: "function", function: { name: "audit_and_decide" } });
+
+            if (!auditResponse.ok) {
+              send({ type: 'thinking', phase: 'audit', content: `Audit call failed (${auditResponse.status}), proceeding to synthesis.` });
+              auditDecision = { quality_verdict: 'sufficient', confidence: 0.5, reasoning: 'Audit failed, using defaults', next_actions: [{ action: 'proceed', reason: 'fallback' }], synthesis_plan: { structure: 'Sequential', key_points: [], style_notes: 'Standard format' }, user_style_analysis: { tone: 'technical', detail_preference: 'thorough', patterns_observed: [] } };
+              break;
             }
-          }], { type: "function", function: { name: "audit_and_decide" } });
 
-          if (!auditResponse.ok) {
-            send({ type: 'thinking', phase: 'audit', content: `Audit call failed (${auditResponse.status}), proceeding to synthesis.` });
-            auditDecision = { quality_verdict: 'sufficient', confidence: 0.5, reasoning: 'Audit failed, using defaults', next_actions: [{ action: 'proceed', reason: 'fallback' }], synthesis_plan: { structure: 'Sequential', key_points: [], style_notes: 'Standard format' }, user_style_analysis: { tone: 'technical', detail_preference: 'thorough', patterns_observed: [] } };
-            break;
-          }
+            const auditData = await auditResponse.json();
+            totalTokens += auditData.usage?.total_tokens || 0;
+            auditDecision = parseToolArgs(auditData);
+            const auditLatencyMs = Date.now() - auditStartMs;
 
-          const auditData = await auditResponse.json();
-          totalTokens += auditData.usage?.total_tokens || 0;
-          auditDecision = parseToolArgs(auditData);
-          const auditLatencyMs = Date.now() - auditStartMs;
-
-          // VIF witness for audit
-          const auditWitness = await createWitness({
-            operationType: 'critique', modelId: 'google/gemini-2.5-flash',
-            prompt: plan.goal_summary, context: allOutputsSummary.slice(0, 2000),
-            response: JSON.stringify(auditDecision).slice(0, 2000),
-            confidenceScore: auditDecision.confidence ?? 0.7,
-            runId, inputTokens: auditData.usage?.total_tokens || 0, latencyMs: auditLatencyMs,
-          });
-
-          send({ type: 'thinking', phase: 'audit', content: auditDecision.reasoning || 'Audit complete.' });
-          send({
-            type: 'audit_decision',
-            verdict: auditDecision.quality_verdict,
-            confidence: auditDecision.confidence,
-            reasoning: auditDecision.reasoning,
-            style_analysis: auditDecision.user_style_analysis,
-            next_actions: auditDecision.next_actions,
-            synthesis_plan: auditDecision.synthesis_plan,
-            additional_tasks_count: (auditDecision.additional_tasks || []).length,
-            witness_id: auditWitness?.id,
-            loop: auditLoops + 1,
-          });
-
-          if (auditWitness) {
-            send({ type: 'witness_created', phase: 'audit', witness_id: auditWitness.id, confidence_band: auditWitness.band, kappa_result: auditWitness.kappaResult });
-          }
-
-          // Store audit atom
-          const auditAtomId = await createAtom(
-            JSON.stringify({ verdict: auditDecision.quality_verdict, reasoning: auditDecision.reasoning, style: auditDecision.user_style_analysis }),
-            'decision', { source: 'critic', confidence: auditDecision.confidence, operation: 'audit' }, runId
-          );
-          if (auditAtomId) allAtomIds.push(auditAtomId);
-
-          // If sufficient or max loops reached, break to synthesis
-          const needsDeepening = auditDecision.quality_verdict !== 'sufficient' && (auditDecision.additional_tasks || []).length > 0;
-          if (!needsDeepening || auditLoops >= MAX_AUDIT_LOOPS) {
-            if (auditLoops >= MAX_AUDIT_LOOPS && needsDeepening) {
-              send({ type: 'thinking', phase: 'audit', content: `Max audit loops (${MAX_AUDIT_LOOPS}) reached. Proceeding to synthesis.` });
-            }
-            break;
-          }
-
-          // Execute additional tasks from audit
-          send({ type: 'thinking', phase: 'audit', content: `Verdict: ${auditDecision.quality_verdict}. Executing ${auditDecision.additional_tasks.length} additional task(s)...` });
-          send({ type: 'audit_loop_start', loop: auditLoops + 1, additional_tasks: auditDecision.additional_tasks.map((t: any) => t.title) });
-
-          for (let ai = 0; ai < auditDecision.additional_tasks.length; ai++) {
-            const addTask = auditDecision.additional_tasks[ai];
-            const addTaskId = generateId();
-            const addIdx = plan.tasks.length + ai;
-
-            await supabase.from('tasks').insert({
-              id: addTaskId, run_id: runId, title: addTask.title, prompt: addTask.prompt,
-              priority: 90, status: 'queued',
-              acceptance_criteria: (addTask.acceptance_criteria || []).map((c: string, ci: number) => ({ id: `ac-audit-${ci}`, description: c, type: 'custom', config: {}, required: true })),
+            // VIF witness for audit
+            const auditWitness = await createWitness({
+              operationType: 'critique', modelId: 'google/gemini-2.5-flash',
+              prompt: plan.goal_summary, context: allOutputsSummary.slice(0, 2000),
+              response: JSON.stringify(auditDecision).slice(0, 2000),
+              confidenceScore: auditDecision.confidence ?? 0.7,
+              runId, inputTokens: auditData.usage?.total_tokens || 0, latencyMs: auditLatencyMs,
             });
 
-            send({ type: 'task_start', task_index: addIdx, task_id: addTaskId, title: addTask.title, role: 'builder', is_audit_task: true });
-            await supabase.from('tasks').update({ status: 'active' }).eq('id', addTaskId);
+            send({ type: 'thinking', phase: 'audit', content: auditDecision.reasoning || 'Audit complete.' });
+            send({
+              type: 'audit_decision',
+              verdict: auditDecision.quality_verdict,
+              confidence: auditDecision.confidence,
+              reasoning: auditDecision.reasoning,
+              style_analysis: auditDecision.user_style_analysis,
+              next_actions: auditDecision.next_actions,
+              synthesis_plan: auditDecision.synthesis_plan,
+              additional_tasks_count: (auditDecision.additional_tasks || []).length,
+              witness_id: auditWitness?.id,
+              loop: auditLoops + 1,
+            });
 
-            try {
-              const addDetailLevel = addTask.detail_level || 'standard';
-              const addModel = addDetailLevel === 'exhaustive' ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview";
-              const prevCtx = taskOutputs.slice(-3).map((o, j) => o.slice(0, 2000)).join('\n---\n');
-
-              const addResult = await streamContent(LOVABLE_API_KEY, addModel,
-                `You are AIM-OS Task Executor (Audit Loop ${auditLoops + 1}).\nGOAL: "${plan.goal_summary}"\nThis is a DEEPENING task requested by the auditor.\n${detailInstructions[addDetailLevel] || detailInstructions.standard}`,
-                `## Task: ${addTask.title}\n\n${addTask.prompt}\n\n### Criteria\n${(addTask.acceptance_criteria || []).map((c: string, j: number) => `${j+1}. ${c}`).join('\n')}\n\n### Previous Context\n${prevCtx}`,
-                send, addIdx);
-
-              totalTokens += addResult.tokens;
-              taskOutputs.push(addResult.output);
-
-              // Quick verify
-              const addVerify = await verifyTask(LOVABLE_API_KEY, addTask, addResult.output);
-              totalTokens += addVerify.tokens;
-              taskVerifications.push(addVerify.result);
-
-              await supabase.from('tasks').update({
-                status: addVerify.result.passed ? 'done' : 'failed',
-                result: { output: addResult.output.slice(0, 5000), verification: addVerify.result },
-              }).eq('id', addTaskId);
-
-              send({ type: 'task_verified', task_index: addIdx, verification: addVerify.result });
-              send({ type: 'task_complete', task_index: addIdx, status: addVerify.result.passed ? 'done' : 'failed' });
-
-              // Add to plan tasks for downstream tracking
-              plan.tasks.push({ ...addTask, assigned_role: 'builder' });
-              taskIds.push(addTaskId);
-            } catch (addErr: any) {
-              console.error(`Audit task ${ai} error:`, addErr);
-              taskOutputs.push(`ERROR: ${addErr.message}`);
-              taskVerifications.push({ passed: false, score: 0, summary: addErr.message });
-              send({ type: 'task_error', task_index: addIdx, error: addErr.message });
+            if (auditWitness) {
+              send({ type: 'witness_created', phase: 'audit', witness_id: auditWitness.id, confidence_band: auditWitness.band, kappa_result: auditWitness.kappaResult });
             }
-          }
 
-          auditLoops++;
+            // Store audit atom
+            const auditAtomId = await createAtom(
+              JSON.stringify({ verdict: auditDecision.quality_verdict, reasoning: auditDecision.reasoning, style: auditDecision.user_style_analysis }),
+              'decision', { source: 'critic', confidence: auditDecision.confidence, operation: 'audit' }, runId
+            );
+            if (auditAtomId) allAtomIds.push(auditAtomId);
+
+            // If sufficient or max loops reached, break to synthesis
+            const needsDeepening = auditDecision.quality_verdict !== 'sufficient' && (auditDecision.additional_tasks || []).length > 0;
+            if (!needsDeepening || auditLoops >= MAX_AUDIT_LOOPS) {
+              if (auditLoops >= MAX_AUDIT_LOOPS && needsDeepening) {
+                send({ type: 'thinking', phase: 'audit', content: `Max audit loops (${MAX_AUDIT_LOOPS}) reached. Proceeding to synthesis.` });
+              }
+              break;
+            }
+
+            // Execute additional tasks from audit
+            send({ type: 'thinking', phase: 'audit', content: `Verdict: ${auditDecision.quality_verdict}. Executing ${auditDecision.additional_tasks.length} additional task(s)...` });
+            send({ type: 'audit_loop_start', loop: auditLoops + 1, additional_tasks: auditDecision.additional_tasks.map((t: any) => t.title) });
+
+            for (let ai = 0; ai < auditDecision.additional_tasks.length; ai++) {
+              const addTask = auditDecision.additional_tasks[ai];
+              const addTaskId = generateId();
+              const addIdx = plan.tasks.length + ai;
+
+              await supabase.from('tasks').insert({
+                id: addTaskId, run_id: runId, title: addTask.title, prompt: addTask.prompt,
+                priority: 90, status: 'queued',
+                acceptance_criteria: (addTask.acceptance_criteria || []).map((c: string, ci: number) => ({ id: `ac-audit-${ci}`, description: c, type: 'custom', config: {}, required: true })),
+              });
+
+              send({ type: 'task_start', task_index: addIdx, task_id: addTaskId, title: addTask.title, role: 'builder', is_audit_task: true });
+              await supabase.from('tasks').update({ status: 'active' }).eq('id', addTaskId);
+
+              try {
+                const addDetailLevel = addTask.detail_level || 'standard';
+                const addModel = addDetailLevel === 'exhaustive' ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview";
+                const prevCtx = taskOutputs.slice(-3).map((o) => o.slice(0, 2000)).join('\n---\n');
+
+                const addResult = await streamContent(LOVABLE_API_KEY, addModel,
+                  `You are AIM-OS Task Executor (Audit Loop ${auditLoops + 1}).\nGOAL: "${plan.goal_summary}"\nThis is a DEEPENING task requested by the auditor.\n${detailInstructions[addDetailLevel] || detailInstructions.standard}`,
+                  `## Task: ${addTask.title}\n\n${addTask.prompt}\n\n### Criteria\n${(addTask.acceptance_criteria || []).map((c: string, j: number) => `${j+1}. ${c}`).join('\n')}\n\n### Previous Context\n${prevCtx}`,
+                  send, addIdx);
+
+                totalTokens += addResult.tokens;
+                taskOutputs.push(addResult.output);
+
+                // Quick verify
+                const addVerify = await verifyTask(LOVABLE_API_KEY, addTask, addResult.output);
+                totalTokens += addVerify.tokens;
+                taskVerifications.push(addVerify.result);
+
+                await supabase.from('tasks').update({
+                  status: addVerify.result.passed ? 'done' : 'failed',
+                  result: { output: addResult.output.slice(0, 5000), verification: addVerify.result },
+                }).eq('id', addTaskId);
+
+                send({ type: 'task_verified', task_index: addIdx, verification: addVerify.result });
+                send({ type: 'task_complete', task_index: addIdx, status: addVerify.result.passed ? 'done' : 'failed' });
+
+                // Add to plan tasks for downstream tracking
+                plan.tasks.push({ ...addTask, assigned_role: 'builder' });
+                taskIds.push(addTaskId);
+              } catch (addErr: any) {
+                console.error(`Audit task ${ai} error:`, addErr);
+                taskOutputs.push(`ERROR: ${addErr.message}`);
+                taskVerifications.push({ passed: false, score: 0, summary: addErr.message });
+                send({ type: 'task_error', task_index: addIdx, error: addErr.message });
+              }
+            }
+
+            auditLoops++;
+          }
         }
 
         // ═══════════════════════════════════════════════════
