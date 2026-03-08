@@ -455,8 +455,12 @@ Use the tool to return structured reflection data.`
         });
 
         send({ type: 'run_complete', run_id: runId, total_tokens: totalTokens, task_count: plan.tasks.length });
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
+        if (!closed) {
+          try {
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          } catch { /* already closed */ }
+        }
       }
     });
 
