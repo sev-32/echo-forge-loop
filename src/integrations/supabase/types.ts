@@ -147,6 +147,79 @@ export type Database = {
         }
         Relationships: []
       }
+      contradictions: {
+        Row: {
+          created_at: string
+          detection_method: string
+          id: string
+          metadata: Json
+          node_a_id: string
+          node_b_id: string
+          resolution: string | null
+          resolution_reasoning: string | null
+          resolved_at: string | null
+          resolved_by_run_id: string | null
+          run_id: string | null
+          similarity_score: number
+          stance: string
+          witness_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detection_method?: string
+          id?: string
+          metadata?: Json
+          node_a_id: string
+          node_b_id: string
+          resolution?: string | null
+          resolution_reasoning?: string | null
+          resolved_at?: string | null
+          resolved_by_run_id?: string | null
+          run_id?: string | null
+          similarity_score?: number
+          stance?: string
+          witness_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detection_method?: string
+          id?: string
+          metadata?: Json
+          node_a_id?: string
+          node_b_id?: string
+          resolution?: string | null
+          resolution_reasoning?: string | null
+          resolved_at?: string | null
+          resolved_by_run_id?: string | null
+          run_id?: string | null
+          similarity_score?: number
+          stance?: string
+          witness_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contradictions_node_a_id_fkey"
+            columns: ["node_a_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contradictions_node_b_id_fkey"
+            columns: ["node_b_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contradictions_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ece_tracking: {
         Row: {
           actual_accuracy: number | null
@@ -334,30 +407,42 @@ export type Database = {
       knowledge_edges: {
         Row: {
           created_at: string
+          edge_type: string
           id: string
           metadata: Json
           relation: string
+          run_id: string | null
           source_id: string
+          strength: number
           target_id: string
           weight: number
+          witness_id: string | null
         }
         Insert: {
           created_at?: string
+          edge_type?: string
           id?: string
           metadata?: Json
           relation?: string
+          run_id?: string | null
           source_id: string
+          strength?: number
           target_id: string
           weight?: number
+          witness_id?: string | null
         }
         Update: {
           created_at?: string
+          edge_type?: string
           id?: string
           metadata?: Json
           relation?: string
+          run_id?: string | null
           source_id?: string
+          strength?: number
           target_id?: string
           weight?: number
+          witness_id?: string | null
         }
         Relationships: [
           {
@@ -374,31 +459,74 @@ export type Database = {
             referencedRelation: "knowledge_nodes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "knowledge_edges_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
         ]
       }
       knowledge_nodes: {
         Row: {
+          atom_id: string | null
+          confidence: number
           created_at: string
+          evidence_type: string
           id: string
           label: string
           metadata: Json
           node_type: string
+          run_id: string | null
+          valid_time_end: string | null
+          valid_time_start: string | null
+          witness_id: string | null
         }
         Insert: {
+          atom_id?: string | null
+          confidence?: number
           created_at?: string
+          evidence_type?: string
           id?: string
           label: string
           metadata?: Json
           node_type?: string
+          run_id?: string | null
+          valid_time_end?: string | null
+          valid_time_start?: string | null
+          witness_id?: string | null
         }
         Update: {
+          atom_id?: string | null
+          confidence?: number
           created_at?: string
+          evidence_type?: string
           id?: string
           label?: string
           metadata?: Json
           node_type?: string
+          run_id?: string | null
+          valid_time_end?: string | null
+          valid_time_start?: string | null
+          witness_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_nodes_atom_id_fkey"
+            columns: ["atom_id"]
+            isOneToOne: false
+            referencedRelation: "atoms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_nodes_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       memory_snapshots: {
         Row: {
