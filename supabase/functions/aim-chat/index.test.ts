@@ -26,23 +26,39 @@ interface RunCapture {
 }
 
 // ─── SSE Stream Parser ──────────────────────────────────
-async function captureRun(goal: string): Promise<RunCapture> {
-  const start = Date.now();
-  const result: RunCapture = {
-    events: [], plan: null, taskOutputs: [], taskDeltas: {},
-    verifications: [], reflection: null, rulesGenerated: [],
-    runComplete: null, thoughts: [], memoryEvents: [],
-    errors: [], totalDurationMs: 0, rawEventTypes: [],
-  };
+async function captureRun(goal: string, maxRetries = 3): Promise<RunCapture> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (attempt > 0) {
+      const wait = 5000 * attempt;
+      console.log(`  ⏳ Rate limited, waiting ${wait / 1000}s before retry ${attempt + 1}/${maxRetries}...`);
+      await new Promise(r => setTimeout(r, wait));
+    }
 
-  const resp = await fetch(EDGE_FN_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    },
-    body: JSON.stringify({ messages: [{ role: "user", content: goal }] }),
-  });
+    const start = Date.now();
+    const result: RunCapture = {
+      events: [], plan: null, taskOutputs: [], taskDeltas: {},
+      verifications: [], reflection: null, rulesGenerated: [],
+      runComplete: null, thoughts: [], memoryEvents: [],
+      errors: [], totalDurationMs: 0, rawEventTypes: [],
+    };
+
+    const resp = await fetch(EDGE_FN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ messages: [{ role: "user", content: goal }] }),
+    });
+
+    if (resp.status === 429) {
+      await resp.text(); // drain body
+      continue;
+    }
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+    }
+    assertExists(resp.body, "Response must be a stream");
 
   if (!resp.ok) {
     throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
