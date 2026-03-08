@@ -137,6 +137,12 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
+          <TabsContent value="agents" className="flex-1 mt-0 min-h-0">
+            <div className="h-[calc(100vh-260px)] border border-border rounded-lg bg-surface-1 overflow-hidden">
+              <AgentPanel />
+            </div>
+          </TabsContent>
+
           <TabsContent value="journal" className="flex-1 mt-0 min-h-0">
             <div className="h-[calc(100vh-260px)]"><JournalPanel /></div>
           </TabsContent>
