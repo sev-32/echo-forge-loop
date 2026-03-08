@@ -292,7 +292,7 @@ const phaseConfig: Record<string, { icon: any; label: string; color: string }> =
 
 // ─── Phase Pipeline ─────────────────────────────────────
 function PhasePipeline({ activePhase, status }: { activePhase: string; status: RunData['status'] }) {
-  const phases = ['memory', 'planning', 'execute', 'verify', 'reflect', 'evolve', 'complete'];
+  const phases = ['memory', 'planning', 'execute', 'verify', 'audit', 'synthesize', 'reflect', 'evolve', 'complete'];
   const activeIdx = phases.indexOf(activePhase);
 
   return (
