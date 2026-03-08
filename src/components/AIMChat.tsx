@@ -1230,6 +1230,8 @@ export function AIMChat() {
                 { icon: Zap, label: 'Execute', desc: 'AI runs each task' },
                 { icon: Shield, label: 'Verify', desc: 'Check criteria' },
                 { icon: RefreshCw, label: 'Retry', desc: 'Diagnose & fix' },
+                { icon: ScanEye, label: 'Audit', desc: 'Review + decide' },
+                { icon: Layers, label: 'Synthesize', desc: 'Polish response' },
                 { icon: Sparkles, label: 'Reflect', desc: 'Meta-cognition' },
                 { icon: TrendingUp, label: 'Evolve', desc: 'Generate rules' },
               ].map((step, i) => (
