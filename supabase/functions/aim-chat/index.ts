@@ -89,28 +89,42 @@ serve(async (req) => {
     const planResponse = await callAI(LOVABLE_API_KEY, "google/gemini-3-flash-preview", [
       {
         role: "system",
-        content: `You are AIM-OS, an AI Operating System's intelligent task planner. Given a user's goal, analyze its complexity and decompose it into the right number of appropriately-detailed tasks.
+        content: `You are AIM-OS, an AI Operating System's intelligent task planner. Given a user's goal, analyze its TRUE complexity and decompose it into the RIGHT number of tasks with the RIGHT depth.
 
 ## CROSS-RUN MEMORY
 ${memoryContext}
 
 ## CRITICAL: Dynamic Detail Calibration
 
-Assess the goal's complexity and calibrate:
+You MUST honestly assess what the user is asking for and match your response accordingly. DO NOT default to "moderate" — actually think about what they need.
 
-**Complexity → Detail Level:**
-- Simple factual query / list → 1-2 tasks, detail_level: "concise" (200-500 words)
-- Moderate analysis / comparison → 2-3 tasks, detail_level: "standard" (500-1500 words)
-- Complex design / architecture → 3-5 tasks, detail_level: "comprehensive" (1500-3000 words)
-- Research-grade / multi-domain → 4-6 tasks, detail_level: "exhaustive" (3000-6000+ words)
+**Complexity Spectrum:**
+- **Simple** (1-2 tasks, concise): "What is X?", "List 3 Y", quick factual lookups
+  → detail_level: "concise", expected_sections: 1-3, ~200-500 words per task
+- **Moderate** (2-3 tasks, standard): Comparisons, explanations, how-to guides
+  → detail_level: "standard", expected_sections: 3-5, ~500-1500 words per task
+- **Complex** (3-6 tasks, comprehensive): Architecture designs, deep analyses, strategy documents
+  → detail_level: "comprehensive", expected_sections: 5-8, ~1500-3000 words per task
+  → Comprehensive tasks will be executed SECTION-BY-SECTION for deep quality
+- **Research-grade** (4-8 tasks, exhaustive): Full technical documentation, research papers, implementation guides, multi-domain analyses
+  → detail_level: "exhaustive", expected_sections: 8-15, ~3000-6000+ words per task
+  → Exhaustive tasks will be executed SECTION-BY-SECTION with dedicated section planning
+
+**KEY INSIGHT**: For complex/exhaustive goals, you can create MORE tasks with DIFFERENT detail levels. E.g., an intro task at "standard" + deep-dive tasks at "comprehensive" + conclusion at "standard".
+
+**Task Chaining**: Later tasks WILL receive full output from earlier tasks as context. Design task dependencies deliberately — have early tasks produce foundations that later tasks build on.
 
 **For each task set:**
-- detail_level, expected_sections, depth_guidance, acceptance_criteria
+- detail_level (CRITICAL — this controls execution strategy)
+- expected_sections (how many ## sections the output should have)
+- depth_guidance (specific instructions on what depth means for THIS task)
+- acceptance_criteria (specific, measurable, verifiable)
+- reasoning (why this task exists, what it contributes to the whole)
 - Priorities: 90-100 = critical, 70-89 = high, 50-69 = medium
 
 Apply any active process rules from memory. Note which rules you're applying.
 
-IMPORTANT: In your planning_reasoning, explain your thought process — why this complexity level, why these specific tasks, what tradeoffs you considered, what questions you have about the goal (even if you proceed with your best judgment).`
+IMPORTANT: In your planning_reasoning, explain your thought process — why this complexity level, why these specific tasks, how they chain together, what tradeoffs you considered, what questions you have about the goal.`
       },
       { role: "user", content: lastUserMsg }
     ], [{
