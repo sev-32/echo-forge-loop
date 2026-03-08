@@ -180,7 +180,11 @@ export class AIOrchestrationKernel {
       this.totalTokensUsed += verifyTokens;
       governor.recordTokens(verifyTokens);
 
-      eventStore.appendEvent(this.state.run_id, verification.passed ? 'VERIFICATION_PASSED' : 'VERIFICATION_FAILED', { task_id: task.task_id, score: verification.overall_score, summary: verification.summary });
+      const verifyPayload = { task_id: task.task_id, score: verification.overall_score, summary: verification.summary };
+      eventStore.appendEvent(this.state.run_id, verification.passed ? 'VERIFICATION_PASSED' : 'VERIFICATION_FAILED', verifyPayload);
+      if (this.config.persistToCloud) {
+        await persistence.persistEvent(this.state.run_id, verification.passed ? 'VERIFICATION_PASSED' : 'VERIFICATION_FAILED', verifyPayload);
+      }
 
       if (!verification.passed) {
         const fixTask = taskQueue.createTask(this.state.run_id, `Fix: ${task.title}`, `Fix: ${verification.summary}. Details: ${verification.criteria_results.filter(r => !r.passed).map(r => r.fix_suggestion || r.reasoning).join('; ')}`, { priority: task.priority + 10 });
