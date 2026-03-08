@@ -128,10 +128,12 @@ async function captureRun(goal: string, maxRetries = 3): Promise<RunCapture> {
         break;
       }
     }
-  }
+    }
 
-  result.totalDurationMs = Date.now() - start;
-  return result;
+    result.totalDurationMs = Date.now() - start;
+    return result;
+  }
+  throw new Error("Rate limited after all retries");
 }
 
 // ─── DB Query Helper ────────────────────────────────────
