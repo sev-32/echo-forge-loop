@@ -910,6 +910,33 @@ ${activeRulesSummary || 'None yet.'}
 
             send({ type: 'knowledge_update', nodes_added: Object.keys(nodeMap).length, edges_added: (reflection.knowledge_edges || []).length });
 
+            // ─── SEG: Contradiction Detection ───
+            const newNodeIds = Object.values(nodeMap).filter(Boolean) as string[];
+            if (newNodeIds.length > 0) {
+              send({ type: 'thinking', phase: 'reflect', content: `SEG: Scanning ${newNodeIds.length} new nodes for contradictions against existing graph...` });
+              try {
+                const detected = await detectContradictions(newNodeIds, runId, reflWitness?.id || null);
+                if (detected.length > 0) {
+                  send({
+                    type: 'contradictions_detected',
+                    count: detected.length,
+                    contradictions: detected.map((c: any) => ({
+                      id: c.id,
+                      node_a_label: c.metadata?.node_a_label,
+                      node_b_label: c.metadata?.node_b_label,
+                      stance: c.stance,
+                      similarity: c.similarity_score,
+                    })),
+                  });
+                  send({ type: 'thinking', phase: 'reflect', content: `⚠️ SEG: ${detected.length} contradiction(s) detected! Check the Evidence tab.` });
+                } else {
+                  send({ type: 'thinking', phase: 'reflect', content: 'SEG: No contradictions detected — graph is consistent.' });
+                }
+              } catch (cdErr) {
+                console.error('Contradiction detection error:', cdErr);
+              }
+            }
+
             // ─── Process rules evolution ───
             const newRules = reflection.new_process_rules || [];
             const insertedRuleIds: string[] = [];
