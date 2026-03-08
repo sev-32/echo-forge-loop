@@ -215,7 +215,7 @@ export class CoreMemoryController {
         reason: params.reason,
         run_id: params.run_id ?? null,
         metadata: params.metadata ?? {},
-      })
+      } as any)
       .select()
       .single();
 
