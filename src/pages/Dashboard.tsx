@@ -120,6 +120,12 @@ export default function Dashboard() {
             <TabsTrigger value="agents">
               <Bot className="h-3 w-3 mr-1" /> Agents
             </TabsTrigger>
+            <TabsTrigger value="regression">
+              <BarChart3 className="h-3 w-3 mr-1" /> Regression
+            </TabsTrigger>
+            <TabsTrigger value="knowledge">
+              <Network className="h-3 w-3 mr-1" /> Knowledge
+            </TabsTrigger>
             <TabsTrigger value="journal">AI Journal</TabsTrigger>
             <TabsTrigger value="tests">Test Harness</TabsTrigger>
             <TabsTrigger value="audit">Test Audit</TabsTrigger>
