@@ -34,7 +34,7 @@ serve(async (req) => {
       payload: { source: 'chat', goal: lastUserMsg, timestamp: new Date().toISOString() },
     });
 
-    // ─── Step 1: AI Task Planner ───
+    // ─── Step 1: AI Task Planner with Dynamic Detail Calibration ───
     const planResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
@@ -43,15 +43,29 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are AIM-OS, an AI Operating System's task planner. Given a user's goal, decompose it into 3-5 detailed, actionable tasks.
+            content: `You are AIM-OS, an AI Operating System's intelligent task planner. Given a user's goal, analyze its complexity and decompose it into the right number of appropriately-detailed tasks.
 
-Each task must be substantial and produce real deliverables. Think like a senior engineer breaking down a project.
+## CRITICAL: Dynamic Detail Calibration
 
-Rules:
-- Tasks should build on each other (later tasks can reference earlier ones)
-- Each task should take meaningful work, not trivial steps
-- Acceptance criteria must be specific and verifiable
-- Priorities: 90-100 = critical, 70-89 = high, 50-69 = medium`
+You MUST assess the goal's complexity and calibrate your response accordingly:
+
+**Complexity Signals → Detail Level:**
+- Simple factual query / list → 1-2 tasks, detail_level: "concise" (brief, focused answers)
+- Moderate analysis / comparison → 2-3 tasks, detail_level: "standard" (thorough but not exhaustive)  
+- Complex design / architecture / strategy → 3-5 tasks, detail_level: "comprehensive" (deep analysis, examples, tradeoffs)
+- Research-grade / multi-domain synthesis → 4-6 tasks, detail_level: "exhaustive" (academic depth, citations, edge cases, full frameworks)
+
+**For each task, you MUST set:**
+- detail_level: "concise" | "standard" | "comprehensive" | "exhaustive"
+- expected_sections: number of major sections the output should have (1-3 for concise, 3-5 for standard, 5-8 for comprehensive, 8-15 for exhaustive)
+- depth_guidance: a sentence telling the executor HOW deep to go (e.g. "Provide a 2-sentence definition" vs "Write a full technical specification with code examples, edge cases, and performance analysis")
+
+**Rules:**
+- Match task count to actual complexity — don't pad simple requests with filler tasks
+- Each task's detail_level can differ (e.g. a research task might be "exhaustive" while a formatting task is "concise")
+- Acceptance criteria should match the detail_level (more criteria for deeper tasks)
+- Priorities: 90-100 = critical, 70-89 = high, 50-69 = medium
+- Tasks should build on each other when the goal requires it`
           },
           { role: "user", content: lastUserMsg }
         ],
@@ -59,11 +73,12 @@ Rules:
           type: "function",
           function: {
             name: "create_task_plan",
-            description: "Create a structured execution plan",
+            description: "Create a structured execution plan with dynamic detail calibration",
             parameters: {
               type: "object",
               properties: {
                 goal_summary: { type: "string", description: "Concise goal statement" },
+                overall_complexity: { type: "string", enum: ["simple", "moderate", "complex", "research-grade"], description: "Assessment of the goal's overall complexity" },
                 approach: { type: "string", description: "High-level approach explanation (2-3 sentences)" },
                 tasks: {
                   type: "array",
@@ -73,14 +88,17 @@ Rules:
                       title: { type: "string" },
                       prompt: { type: "string", description: "Detailed execution instructions" },
                       priority: { type: "number" },
+                      detail_level: { type: "string", enum: ["concise", "standard", "comprehensive", "exhaustive"], description: "How detailed the output should be" },
+                      expected_sections: { type: "number", description: "Number of major sections expected in output" },
+                      depth_guidance: { type: "string", description: "Specific instruction on depth, length, and what to include/exclude" },
                       acceptance_criteria: { type: "array", items: { type: "string" } },
                       depends_on: { type: "array", items: { type: "number" }, description: "Indices of tasks this depends on" }
                     },
-                    required: ["title", "prompt", "priority", "acceptance_criteria"]
+                    required: ["title", "prompt", "priority", "detail_level", "expected_sections", "depth_guidance", "acceptance_criteria"]
                   }
                 }
               },
-              required: ["goal_summary", "approach", "tasks"]
+              required: ["goal_summary", "overall_complexity", "approach", "tasks"]
             }
           }
         }],
@@ -145,7 +163,13 @@ Rules:
           run_id: runId,
           goal: plan.goal_summary,
           approach: plan.approach,
-          tasks: plan.tasks.map((t: any, i: number) => ({ id: taskIds[i], index: i, title: t.title, status: 'queued', priority: t.priority, criteria_count: t.acceptance_criteria.length })),
+          overall_complexity: plan.overall_complexity || 'moderate',
+          tasks: plan.tasks.map((t: any, i: number) => ({
+            id: taskIds[i], index: i, title: t.title, status: 'queued', priority: t.priority,
+            criteria_count: t.acceptance_criteria.length,
+            detail_level: t.detail_level || 'standard',
+            expected_sections: t.expected_sections || 4,
+          })),
         });
 
         let totalTokens = 0;
@@ -160,14 +184,48 @@ Rules:
           send({ type: 'task_start', task_index: i, task_id: taskId, title: task.title });
 
           try {
-            // Build context from previous task outputs
-            const prevContext = taskOutputs.map((out, j) => `[Task ${j+1}: ${plan.tasks[j].title}]\n${out.slice(0, 1500)}`).join('\n\n');
+            // Build context from previous task outputs (scale context window to detail level)
+            const detailLevel = task.detail_level || 'standard';
+            const contextSlice = detailLevel === 'exhaustive' ? 3000 : detailLevel === 'comprehensive' ? 2000 : detailLevel === 'standard' ? 1500 : 800;
+            const prevContext = taskOutputs.map((out, j) => `[Task ${j+1}: ${plan.tasks[j].title}]\n${out.slice(0, contextSlice)}`).join('\n\n');
+
+            // Dynamic detail instructions based on calibration
+            const detailInstructions: Record<string, string> = {
+              concise: `OUTPUT CALIBRATION: CONCISE MODE
+- Be brief and focused. No filler, no preamble.
+- ${task.expected_sections || 2} major sections maximum.
+- Total output: 200-500 words. Get to the point fast.
+- Only include what directly answers the task. Skip obvious context.`,
+              standard: `OUTPUT CALIBRATION: STANDARD MODE
+- Be thorough but not exhaustive. Cover all key points with enough detail to be useful.
+- ${task.expected_sections || 4} major sections expected.
+- Total output: 500-1500 words.
+- Include examples where they clarify. Skip edge cases unless critical.
+- Use tables for comparisons, code blocks for technical content.`,
+              comprehensive: `OUTPUT CALIBRATION: COMPREHENSIVE MODE
+- Go deep. This task requires thorough analysis with real substance.
+- ${task.expected_sections || 6} major sections expected.
+- Total output: 1500-3000 words.
+- Include: detailed explanations, multiple examples, tradeoff analysis, implementation considerations.
+- Use diagrams (described in text), tables, code samples, and structured breakdowns.
+- Address edge cases, failure modes, and alternatives.`,
+              exhaustive: `OUTPUT CALIBRATION: EXHAUSTIVE / RESEARCH-GRADE MODE
+- Maximum depth and rigor. This is the most detailed output level.
+- ${task.expected_sections || 10} major sections expected.
+- Total output: 3000-6000+ words.
+- Include: comprehensive frameworks, detailed code implementations, performance analysis, benchmarks, academic references where relevant.
+- Cover: all edge cases, failure modes, security considerations, scalability implications, historical context, competing approaches with pros/cons.
+- Use: tables, code blocks, numbered lists, nested structures, cross-references to other sections.
+- Every claim should be supported with reasoning or evidence.`
+            };
+
+            const depthGuidance = task.depth_guidance || '';
 
             const execResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
               method: "POST",
               headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
               body: JSON.stringify({
-                model: "google/gemini-3-flash-preview",
+                model: detailLevel === 'exhaustive' ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview",
                 messages: [
                   {
                     role: "system",
@@ -175,8 +233,13 @@ Rules:
 
 GOAL: "${plan.goal_summary}"
 APPROACH: "${plan.approach}"
+OVERALL COMPLEXITY: ${plan.overall_complexity || 'moderate'}
 
-You are executing task ${i+1} of ${plan.tasks.length}. Be thorough, specific, and produce real deliverables.
+You are executing task ${i+1} of ${plan.tasks.length}.
+
+${detailInstructions[detailLevel] || detailInstructions.standard}
+
+SPECIFIC DEPTH GUIDANCE: ${depthGuidance}
 
 Format with markdown. Use:
 - ## Headers for major sections

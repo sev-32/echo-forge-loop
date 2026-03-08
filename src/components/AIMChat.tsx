@@ -26,6 +26,8 @@ interface TaskPlan {
   status: 'queued' | 'running' | 'verifying' | 'done' | 'failed';
   priority: number;
   criteriaCount: number;
+  detailLevel: 'concise' | 'standard' | 'comprehensive' | 'exhaustive';
+  expectedSections: number;
   output: string;
   verification?: { passed: boolean; score: number; summary: string; criteria_results?: Array<{ criterion: string; met: boolean; reasoning: string }> };
 }
@@ -42,6 +44,7 @@ interface RunData {
   runId: string;
   goal: string;
   approach: string;
+  overallComplexity: 'simple' | 'moderate' | 'complex' | 'research-grade';
   tasks: TaskPlan[];
   reflection: ReflectionData | null;
   knowledgeUpdate: { nodes_added: number; edges_added: number } | null;
@@ -198,6 +201,43 @@ function TaskStatusBadge({ status }: { status: TaskPlan['status'] }) {
   );
 }
 
+// ─── Detail Level Badge ─────────────────────────────────
+function DetailLevelBadge({ level }: { level: TaskPlan['detailLevel'] }) {
+  const config: Record<string, { label: string; icon: string; className: string }> = {
+    concise: { label: 'Brief', icon: '⚡', className: 'bg-muted text-muted-foreground' },
+    standard: { label: 'Standard', icon: '📋', className: 'bg-primary/10 text-primary' },
+    comprehensive: { label: 'Deep', icon: '🔬', className: 'bg-accent/15 text-accent' },
+    exhaustive: { label: 'Research', icon: '🧠', className: 'bg-[hsl(var(--status-warning))]/15 text-[hsl(var(--status-warning))]' },
+  };
+  const c = config[level] || config.standard;
+  return (
+    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium ${c.className}`}>
+      {c.icon} {c.label}
+    </span>
+  );
+}
+
+// ─── Complexity Badge ───────────────────────────────────
+function ComplexityBadge({ complexity }: { complexity: RunData['overallComplexity'] }) {
+  const config: Record<string, { label: string; className: string; bars: number }> = {
+    simple: { label: 'Simple', className: 'text-muted-foreground', bars: 1 },
+    moderate: { label: 'Moderate', className: 'text-primary', bars: 2 },
+    complex: { label: 'Complex', className: 'text-accent', bars: 3 },
+    'research-grade': { label: 'Research-Grade', className: 'text-[hsl(var(--status-warning))]', bars: 4 },
+  };
+  const c = config[complexity] || config.moderate;
+  return (
+    <span className={`inline-flex items-center gap-1 text-[9px] font-medium ${c.className}`}>
+      <span className="flex gap-0.5">
+        {Array.from({ length: 4 }, (_, i) => (
+          <span key={i} className={`w-1 rounded-full ${i < c.bars ? 'bg-current' : 'bg-muted'}`} style={{ height: `${6 + i * 2}px` }} />
+        ))}
+      </span>
+      {c.label}
+    </span>
+  );
+}
+
 // ─── Task Card ──────────────────────────────────────────
 function TaskCard({ task, isExpanded, onToggle }: { task: TaskPlan; isExpanded: boolean; onToggle: () => void }) {
   const borderClass = task.status === 'running' ? 'border-accent/40 shadow-[0_0_8px_hsl(var(--accent)/0.15)]' :
@@ -213,6 +253,7 @@ function TaskCard({ task, isExpanded, onToggle }: { task: TaskPlan; isExpanded: 
         ) : <div className="w-3" />}
         <TaskStatusBadge status={task.status} />
         <span className="text-xs font-medium text-foreground flex-1 truncate">{task.title}</span>
+        <DetailLevelBadge level={task.detailLevel} />
         {task.verification && (
           <Badge variant={task.verification.passed ? 'default' : 'destructive'} className="text-[9px] h-4 px-1.5 font-mono">
             {task.verification.score}/100
@@ -294,6 +335,7 @@ function RunVisualization({ runData }: { runData: RunData }) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-bold text-foreground">AIM-OS</span>
             <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-mono">{runData.runId.slice(0, 12)}</Badge>
+            <ComplexityBadge complexity={runData.overallComplexity} />
             {runData.status === 'complete' && (
               <Badge className="text-[9px] h-4 px-1.5 bg-[hsl(var(--status-success))]/20 text-[hsl(var(--status-success))] border-[hsl(var(--status-success))]/30">
                 ✅ {doneCount}/{totalCount} tasks • avg {avgScore}/100
@@ -441,7 +483,7 @@ export function AIMChat() {
     const assistantId = crypto.randomUUID();
     const assistantMsg: ChatMessage = {
       id: assistantId, role: 'assistant', content: '', timestamp: Date.now(),
-      runData: { runId: '', goal: text.trim(), approach: '', tasks: [], reflection: null, knowledgeUpdate: null, status: 'planning', totalTokens: 0 },
+      runData: { runId: '', goal: text.trim(), approach: '', overallComplexity: 'moderate', tasks: [], reflection: null, knowledgeUpdate: null, status: 'planning', totalTokens: 0 },
     };
 
     setMessages(prev => [...prev, userMsg, assistantMsg]);
@@ -465,9 +507,13 @@ export function AIMChat() {
             runId: data.run_id || rd.runId,
             goal: data.goal,
             approach: data.approach || '',
+            overallComplexity: data.overall_complexity || 'moderate',
             tasks: data.tasks.map((t: any) => ({
               id: t.id, index: t.index, title: t.title, status: 'queued' as const,
-              priority: t.priority, criteriaCount: t.criteria_count, output: '', verification: undefined,
+              priority: t.priority, criteriaCount: t.criteria_count,
+              detailLevel: t.detail_level || 'standard',
+              expectedSections: t.expected_sections || 4,
+              output: '', verification: undefined,
             })),
             status: 'executing',
           }));
