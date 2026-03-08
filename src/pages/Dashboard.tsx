@@ -9,13 +9,15 @@ import { JournalPanel } from '@/components/JournalPanel';
 import { TestAuditPanel } from '@/components/TestAuditPanel';
 import { LiveActivityPanel } from '@/components/LiveActivityPanel';
 import { AgentPanel } from '@/components/AgentPanel';
+import { RegressionDashboard } from '@/components/RegressionDashboard';
+import { KnowledgeGraphPanel } from '@/components/KnowledgeGraphPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAIKernel } from '@/hooks/use-ai-kernel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Play, Square, SkipForward, Pause, RotateCcw, Zap, Brain, Bot } from 'lucide-react';
+import { Play, Square, SkipForward, Pause, RotateCcw, Zap, Brain, Bot, BarChart3, Network } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Dashboard() {
