@@ -353,18 +353,18 @@ Deno.test("Full pipeline: thinking → plan → execute → verify → reflect �
     console.log(`  ⚠️ No reflection (likely rate-limited)`);
   }
 
-  if (run.reflection.process_evaluation) {
+  if (run.reflection?.process_evaluation) {
     const pe = run.reflection.process_evaluation;
     assert(typeof pe.planning_score === "number", "Must have planning_score");
     assert(pe.planning_score >= 0 && pe.planning_score <= 100, `Planning score out of range: ${pe.planning_score}`);
     console.log(`  Planning: ${pe.planning_score}/100 — ${pe.planning_feedback?.slice(0, 100)}`);
   }
-  if (run.reflection.strategy_assessment) {
+  if (run.reflection?.strategy_assessment) {
     const sa = run.reflection.strategy_assessment;
     assert(typeof sa.effectiveness_score === "number", "Must have effectiveness_score");
     console.log(`  Strategy: ${sa.effectiveness_score}/100 — ${sa.feedback?.slice(0, 100)}`);
   }
-  if (run.reflection.new_process_rules?.length > 0) {
+  if (run.reflection?.new_process_rules?.length > 0) {
     console.log(`  New rules: ${run.reflection.new_process_rules.length}`);
     for (const r of run.reflection.new_process_rules) {
       console.log(`    → [${r.category}] ${r.rule_text}`);
