@@ -91,8 +91,19 @@ interface MemoryDetail {
 interface ThoughtEntry {
   id: string;
   timestamp: number;
-  phase: 'memory' | 'planning' | 'execute' | 'verify' | 'retry' | 'reflect' | 'evolve' | 'complete';
+  phase: 'memory' | 'planning' | 'execute' | 'verify' | 'retry' | 'audit' | 'synthesize' | 'reflect' | 'evolve' | 'complete';
   content: string;
+}
+
+interface AuditDecision {
+  verdict: string;
+  confidence: number;
+  reasoning: string;
+  style_analysis?: { tone: string; detail_preference: string; patterns_observed: string[] };
+  next_actions?: Array<{ action: string; target?: string; reason: string }>;
+  synthesis_plan?: { structure: string; key_points: string[]; style_notes: string };
+  additional_tasks_count?: number;
+  loop?: number;
 }
 
 interface RunData {
@@ -106,13 +117,18 @@ interface RunData {
   thoughts: ThoughtEntry[];
   reflection: ReflectionData | null;
   knowledgeUpdate: { nodes_added: number; edges_added: number } | null;
-  status: 'planning' | 'executing' | 'reflecting' | 'complete' | 'error';
+  status: 'planning' | 'executing' | 'auditing' | 'synthesizing' | 'reflecting' | 'complete' | 'error';
   totalTokens: number;
   memoryLoaded?: MemoryLoaded;
   memoryDetail?: MemoryDetail;
   lessonsIncorporated?: string[];
   generatedRules?: ProcessRule[];
   activePhase: ThoughtEntry['phase'];
+  auditDecision?: AuditDecision;
+  synthesizedResponse?: string;
+  synthesisFollowUps?: string[];
+  synthesisCaveats?: string[];
+  auditLoops?: number;
 }
 
 // ─── System Activity Log ────────────────────────────────
@@ -151,10 +167,12 @@ async function streamAIMOS({
   onKnowledgeUpdate, onRunComplete, onError,
   onTaskRetryStart, onTaskRetryDiagnosis, onProcessEvaluation, onRulesGenerated,
   onThinking, onMemoryDetail, onOpenQuestions,
+  onAuditStart, onAuditDecision, onAuditLoopStart,
+  onSynthesisStart, onSynthesisComplete,
 }: {
   conversationHistory: { role: string; content: string }[];
   onPlan: (data: any) => void;
-  onTaskStart: (taskIndex: number, taskId: string, title: string) => void;
+  onTaskStart: (taskIndex: number, taskId: string, title: string, isAuditTask?: boolean) => void;
   onTaskDelta: (taskIndex: number, delta: string) => void;
   onTaskVerifyStart: (taskIndex: number) => void;
   onTaskVerified: (taskIndex: number, verification: any) => void;
@@ -172,6 +190,11 @@ async function streamAIMOS({
   onThinking: (phase: string, content: string) => void;
   onMemoryDetail: (data: MemoryDetail) => void;
   onOpenQuestions: (questions: string[]) => void;
+  onAuditStart: () => void;
+  onAuditDecision: (data: any) => void;
+  onAuditLoopStart: (loop: number, tasks: string[]) => void;
+  onSynthesisStart: () => void;
+  onSynthesisComplete: (data: any) => void;
 }) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
@@ -214,7 +237,7 @@ async function streamAIMOS({
           case 'memory_detail': onMemoryDetail(evt); break;
           case 'open_questions': onOpenQuestions(evt.questions); break;
           case 'plan': onPlan(evt); break;
-          case 'task_start': onTaskStart(evt.task_index, evt.task_id, evt.title); break;
+          case 'task_start': onTaskStart(evt.task_index, evt.task_id, evt.title, evt.is_audit_task); break;
           case 'task_delta': onTaskDelta(evt.task_index, evt.delta); break;
           case 'task_verify_start': onTaskVerifyStart(evt.task_index); break;
           case 'task_verified': onTaskVerified(evt.task_index, evt.verification); break;
@@ -228,6 +251,11 @@ async function streamAIMOS({
           case 'task_retry_diagnosis': onTaskRetryDiagnosis(evt.task_index, evt.diagnosis); break;
           case 'process_evaluation': onProcessEvaluation(evt.data); break;
           case 'rules_generated': onRulesGenerated(evt); break;
+          case 'audit_start': onAuditStart(); break;
+          case 'audit_decision': onAuditDecision(evt); break;
+          case 'audit_loop_start': onAuditLoopStart(evt.loop, evt.additional_tasks); break;
+          case 'synthesis_start': onSynthesisStart(); break;
+          case 'synthesis_complete': onSynthesisComplete(evt); break;
         }
       } catch {
         buf = line + "\n" + buf;
@@ -267,6 +295,8 @@ const phaseConfig: Record<string, { icon: any; label: string; color: string }> =
   execute: { icon: Zap, label: 'Execute', color: 'text-accent' },
   verify: { icon: Shield, label: 'Verify', color: 'text-[hsl(var(--status-warning))]' },
   retry: { icon: RefreshCw, label: 'Retry', color: 'text-[hsl(var(--status-blocked))]' },
+  audit: { icon: ScanEye, label: 'Audit', color: 'text-[hsl(var(--status-info))]' },
+  synthesize: { icon: Layers, label: 'Synthesize', color: 'text-primary' },
   reflect: { icon: Sparkles, label: 'Reflect', color: 'text-[hsl(var(--status-pending))]' },
   evolve: { icon: TrendingUp, label: 'Evolve', color: 'text-primary' },
   complete: { icon: CheckCircle2, label: 'Complete', color: 'text-[hsl(var(--status-success))]' },
@@ -274,7 +304,7 @@ const phaseConfig: Record<string, { icon: any; label: string; color: string }> =
 
 // ─── Phase Pipeline ─────────────────────────────────────
 function PhasePipeline({ activePhase, status }: { activePhase: string; status: RunData['status'] }) {
-  const phases = ['memory', 'planning', 'execute', 'verify', 'reflect', 'evolve', 'complete'];
+  const phases = ['memory', 'planning', 'execute', 'verify', 'audit', 'synthesize', 'reflect', 'evolve', 'complete'];
   const activeIdx = phases.indexOf(activePhase);
 
   return (
@@ -1009,13 +1039,22 @@ export function AIMChat() {
           }));
           emitSystemEvent('plan', `Plan: ${data.tasks.length} tasks (${data.overall_complexity})`, { task_count: data.tasks.length });
         },
-        onTaskStart: (idx, taskId, title) => {
+        onTaskStart: (idx, taskId, title, isAuditTask) => {
           updateRun(rd => {
             const tasks = [...rd.tasks];
-            if (tasks[idx]) tasks[idx] = { ...tasks[idx], id: taskId, status: 'running' };
+            if (tasks[idx]) {
+              tasks[idx] = { ...tasks[idx], id: taskId, status: 'running' };
+            } else {
+              // Audit-added task beyond initial plan
+              tasks.push({
+                id: taskId, index: idx, title, status: 'running', priority: 90,
+                criteriaCount: 0, detailLevel: 'standard', expectedSections: 3,
+                output: '', reasoning: isAuditTask ? 'Added by audit deepening' : '',
+              });
+            }
             return { ...rd, tasks, activePhase: 'execute' };
           });
-          emitSystemEvent('task_start', `▶ Task ${idx + 1}: ${title}`);
+          emitSystemEvent('task_start', `▶ ${isAuditTask ? '🔍 ' : ''}Task ${idx + 1}: ${title}`);
         },
         onTaskDelta: (idx, delta) => {
           updateRun(rd => {
@@ -1088,6 +1127,43 @@ export function AIMChat() {
           updateRun(rd => ({ ...rd, generatedRules: data.rules, activePhase: 'evolve' }));
           emitSystemEvent('reflect', `Generated ${data.rules?.length || 0} new process rules`);
         },
+        onAuditStart: () => {
+          updateRun(rd => ({ ...rd, status: 'auditing' as any, activePhase: 'audit' }));
+          emitSystemEvent('verify', '🔍 Auditing outputs holistically...');
+        },
+        onAuditDecision: (data) => {
+          updateRun(rd => ({
+            ...rd,
+            auditDecision: {
+              verdict: data.verdict,
+              confidence: data.confidence,
+              reasoning: data.reasoning,
+              style_analysis: data.style_analysis,
+              next_actions: data.next_actions,
+              synthesis_plan: data.synthesis_plan,
+              additional_tasks_count: data.additional_tasks_count,
+              loop: data.loop,
+            },
+            auditLoops: data.loop,
+          }));
+          emitSystemEvent('verify', `Audit: ${data.verdict} (conf: ${(data.confidence * 100).toFixed(0)}%)${data.additional_tasks_count ? ` +${data.additional_tasks_count} tasks` : ''}`);
+        },
+        onAuditLoopStart: (loop, tasks) => {
+          addThought('audit', `Loop ${loop}: executing ${tasks.length} deepening task(s): ${tasks.join(', ')}`);
+        },
+        onSynthesisStart: () => {
+          updateRun(rd => ({ ...rd, status: 'synthesizing' as any, activePhase: 'synthesize' }));
+          emitSystemEvent('task_done', '✨ Synthesizing final response...');
+        },
+        onSynthesisComplete: (data) => {
+          updateRun(rd => ({
+            ...rd,
+            synthesizedResponse: data.response,
+            synthesisFollowUps: data.follow_up_suggestions || [],
+            synthesisCaveats: data.caveats || [],
+          }));
+          emitSystemEvent('task_done', `Synthesis complete (conf: ${((data.confidence || 0) * 100).toFixed(0)}%)`);
+        },
         onRunComplete: (data) => {
           updateRun(rd => ({ ...rd, status: 'complete', totalTokens: data.total_tokens, activePhase: 'complete' }));
           setIsRunning(false);
@@ -1154,6 +1230,8 @@ export function AIMChat() {
                 { icon: Zap, label: 'Execute', desc: 'AI runs each task' },
                 { icon: Shield, label: 'Verify', desc: 'Check criteria' },
                 { icon: RefreshCw, label: 'Retry', desc: 'Diagnose & fix' },
+                { icon: ScanEye, label: 'Audit', desc: 'Review + decide' },
+                { icon: Layers, label: 'Synthesize', desc: 'Polish response' },
                 { icon: Sparkles, label: 'Reflect', desc: 'Meta-cognition' },
                 { icon: TrendingUp, label: 'Evolve', desc: 'Generate rules' },
               ].map((step, i) => (
@@ -1274,8 +1352,53 @@ function CompletedRunCard({ runData }: { runData: RunData }) {
         {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
       </button>
 
+      {/* Synthesized Response — PRIMARY OUTPUT */}
+      {runData.synthesizedResponse && (
+        <div className="px-4 pt-4 pb-2">
+          <div className="prose prose-sm max-w-none">
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+              {runData.synthesizedResponse}
+            </ReactMarkdown>
+          </div>
+          {(runData.synthesisFollowUps?.length ?? 0) > 0 && (
+            <div className="mt-3 p-2.5 rounded-lg bg-primary/5 border border-primary/15">
+              <div className="text-[10px] font-semibold text-primary mb-1.5 flex items-center gap-1"><Lightbulb className="h-3 w-3" /> Follow-up suggestions</div>
+              <div className="space-y-1">
+                {runData.synthesisFollowUps!.map((s, i) => (
+                  <div key={i} className="text-[10px] text-muted-foreground flex gap-1.5">
+                    <span className="text-primary">→</span> {s}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {(runData.synthesisCaveats?.length ?? 0) > 0 && (
+            <div className="mt-2 space-y-0.5">
+              {runData.synthesisCaveats!.map((c, i) => (
+                <div key={i} className="text-[9px] text-muted-foreground/60 flex items-center gap-1">
+                  <span className="text-[hsl(var(--status-warning))]">⚠</span> {c}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Audit Decision Badge */}
+      {runData.auditDecision && (
+        <div className="mx-4 mt-2 p-2 rounded-lg bg-[hsl(var(--status-info))]/5 border border-[hsl(var(--status-info))]/15">
+          <div className="flex items-center gap-2 text-[9px]">
+            <ScanEye className="h-3 w-3 text-[hsl(var(--status-info))]" />
+            <span className="font-medium text-[hsl(var(--status-info))]">Audit: {runData.auditDecision.verdict}</span>
+            <span className="text-muted-foreground">• Conf: {((runData.auditDecision.confidence || 0) * 100).toFixed(0)}%</span>
+            <span className="text-muted-foreground">• Tone: {runData.auditDecision.style_analysis?.tone || '?'}</span>
+            {(runData.auditLoops || 0) > 1 && <Badge variant="outline" className="text-[8px] h-3.5 px-1">{runData.auditLoops} loops</Badge>}
+          </div>
+        </div>
+      )}
+
       {expanded && (
-        <div className="px-4 pb-4 space-y-3 border-t border-border/50">
+        <div className="px-4 pb-4 space-y-3 border-t border-border/50 mt-2">
           {/* Thoughts summary */}
           {runData.thoughts.length > 0 && (
             <details className="mt-3">
