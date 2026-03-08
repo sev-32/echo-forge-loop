@@ -1076,12 +1076,19 @@ ${conversationSummary}
 
         // ═══════════════════════════════════════════════════
         // PHASE 2.75: SYNTHESIZE — Polished final response
+        // (Simple queries: skip AI synthesis, just join outputs)
         // ═══════════════════════════════════════════════════
-        send({ type: 'thinking', phase: 'synthesize', content: 'Synthesizing all outputs into a polished response...' });
+        send({ type: 'thinking', phase: 'synthesize', content: isSimple ? 'Quick synthesis for simple query...' : 'Synthesizing all outputs into a polished response...' });
         send({ type: 'synthesis_start' });
 
         let synthesizedResponse = '';
-        try {
+
+        if (isSimple && plan.tasks.length <= 2) {
+          // Fast path: use raw output directly for simple single/dual-task queries
+          synthesizedResponse = taskOutputs.filter(Boolean).join('\n\n');
+          send({ type: 'synthesis_complete', response: synthesizedResponse, confidence: 0.8, follow_up_suggestions: [], caveats: [], metadata: { word_count: countWords(synthesizedResponse), style_applied: 'direct' } });
+          send({ type: 'thinking', phase: 'synthesize', content: `Fast synthesis: ${countWords(synthesizedResponse)} words (direct output).` });
+        } else {
           const synthPlan = auditDecision?.synthesis_plan || { structure: 'Sequential', key_points: [], style_notes: 'Clear and thorough' };
           const styleAnalysis = auditDecision?.user_style_analysis || { tone: 'technical', detail_preference: 'thorough', patterns_observed: [] };
 
