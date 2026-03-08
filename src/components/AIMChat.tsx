@@ -201,6 +201,43 @@ function TaskStatusBadge({ status }: { status: TaskPlan['status'] }) {
   );
 }
 
+// ─── Detail Level Badge ─────────────────────────────────
+function DetailLevelBadge({ level }: { level: TaskPlan['detailLevel'] }) {
+  const config: Record<string, { label: string; icon: string; className: string }> = {
+    concise: { label: 'Brief', icon: '⚡', className: 'bg-muted text-muted-foreground' },
+    standard: { label: 'Standard', icon: '📋', className: 'bg-primary/10 text-primary' },
+    comprehensive: { label: 'Deep', icon: '🔬', className: 'bg-accent/15 text-accent' },
+    exhaustive: { label: 'Research', icon: '🧠', className: 'bg-[hsl(var(--status-warning))]/15 text-[hsl(var(--status-warning))]' },
+  };
+  const c = config[level] || config.standard;
+  return (
+    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium ${c.className}`}>
+      {c.icon} {c.label}
+    </span>
+  );
+}
+
+// ─── Complexity Badge ───────────────────────────────────
+function ComplexityBadge({ complexity }: { complexity: RunData['overallComplexity'] }) {
+  const config: Record<string, { label: string; className: string; bars: number }> = {
+    simple: { label: 'Simple', className: 'text-muted-foreground', bars: 1 },
+    moderate: { label: 'Moderate', className: 'text-primary', bars: 2 },
+    complex: { label: 'Complex', className: 'text-accent', bars: 3 },
+    'research-grade': { label: 'Research-Grade', className: 'text-[hsl(var(--status-warning))]', bars: 4 },
+  };
+  const c = config[complexity] || config.moderate;
+  return (
+    <span className={`inline-flex items-center gap-1 text-[9px] font-medium ${c.className}`}>
+      <span className="flex gap-0.5">
+        {Array.from({ length: 4 }, (_, i) => (
+          <span key={i} className={`w-1 rounded-full ${i < c.bars ? 'bg-current' : 'bg-muted'}`} style={{ height: `${6 + i * 2}px` }} />
+        ))}
+      </span>
+      {c.label}
+    </span>
+  );
+}
+
 // ─── Task Card ──────────────────────────────────────────
 function TaskCard({ task, isExpanded, onToggle }: { task: TaskPlan; isExpanded: boolean; onToggle: () => void }) {
   const borderClass = task.status === 'running' ? 'border-accent/40 shadow-[0_0_8px_hsl(var(--accent)/0.15)]' :
