@@ -40,6 +40,7 @@ export default function Dashboard() {
           <TabsList className="bg-transparent h-7 gap-0 p-0">
             {[
               { value: 'chat', icon: MessageSquare, label: 'Chat' },
+              { value: 'history', icon: History, label: 'Runs' },
               { value: 'tasks', icon: LayoutDashboard, label: 'Tasks' },
               { value: 'agents', icon: Bot, label: 'Agents' },
               { value: 'knowledge', icon: Network, label: 'Knowledge' },
