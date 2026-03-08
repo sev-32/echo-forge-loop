@@ -8,13 +8,14 @@ import { ContextPanel } from '@/components/ContextPanel';
 import { JournalPanel } from '@/components/JournalPanel';
 import { TestAuditPanel } from '@/components/TestAuditPanel';
 import { LiveActivityPanel } from '@/components/LiveActivityPanel';
+import { AgentPanel } from '@/components/AgentPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAIKernel } from '@/hooks/use-ai-kernel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Play, Square, SkipForward, Pause, RotateCcw, Zap, Brain } from 'lucide-react';
+import { Play, Square, SkipForward, Pause, RotateCcw, Zap, Brain, Bot } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Dashboard() {
@@ -114,6 +115,9 @@ export default function Dashboard() {
           <TabsList className="bg-surface-1 mb-4 self-start">
             <TabsTrigger value="orchestration">Orchestration</TabsTrigger>
             <TabsTrigger value="activity">Live Activity</TabsTrigger>
+            <TabsTrigger value="agents">
+              <Bot className="h-3 w-3 mr-1" /> Agents
+            </TabsTrigger>
             <TabsTrigger value="journal">AI Journal</TabsTrigger>
             <TabsTrigger value="tests">Test Harness</TabsTrigger>
             <TabsTrigger value="audit">Test Audit</TabsTrigger>
@@ -130,6 +134,12 @@ export default function Dashboard() {
           <TabsContent value="activity" className="flex-1 mt-0 min-h-0">
             <div className="h-[calc(100vh-260px)] border border-border rounded-lg bg-surface-1 overflow-hidden">
               <LiveActivityPanel activities={activities} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="agents" className="flex-1 mt-0 min-h-0">
+            <div className="h-[calc(100vh-260px)] border border-border rounded-lg bg-surface-1 overflow-hidden">
+              <AgentPanel />
             </div>
           </TabsContent>
 

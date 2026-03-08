@@ -140,8 +140,14 @@ export class AIOrchestrationKernel {
     this.totalTokensUsed += tokensUsed;
     governor.recordTokens(tokensUsed);
 
-    eventStore.appendEvent(this.state.run_id, 'PLAN_CREATED', { task_id: task.task_id, plan: stepResult.plan });
-    eventStore.appendEvent(this.state.run_id, 'ACTION_EXECUTED', { task_id: task.task_id, result: stepResult.result, confidence: stepResult.self_assessment.confidence });
+    const planPayload = { task_id: task.task_id, plan: stepResult.plan };
+    const execPayload = { task_id: task.task_id, result: stepResult.result, confidence: stepResult.self_assessment.confidence };
+    eventStore.appendEvent(this.state.run_id, 'PLAN_CREATED', planPayload);
+    eventStore.appendEvent(this.state.run_id, 'ACTION_EXECUTED', execPayload);
+    if (this.config.persistToCloud) {
+      await persistence.persistEvent(this.state.run_id, 'PLAN_CREATED', planPayload);
+      await persistence.persistEvent(this.state.run_id, 'ACTION_EXECUTED', execPayload);
+    }
 
     this.emitActivity('execute', `Executed with ${stepResult.plan.steps.length} steps (confidence: ${Math.round(stepResult.self_assessment.confidence * 100)}%)`, { task_id: task.task_id, tokens: tokensUsed });
 
@@ -158,7 +164,10 @@ export class AIOrchestrationKernel {
     // Handle new tasks from AI
     if (stepResult.new_tasks?.length) {
       for (const nt of stepResult.new_tasks) {
-        taskQueue.createTask(this.state.run_id, nt.title, nt.prompt, { priority: nt.priority || 50 });
+        const newTask = taskQueue.createTask(this.state.run_id, nt.title, nt.prompt, { priority: nt.priority || 50 });
+        if (this.config.persistToCloud) {
+          await persistence.persistTask({ run_id: this.state.run_id, title: nt.title, prompt: nt.prompt, priority: nt.priority || 50 });
+        }
         this.emitActivity('task_created', `AI spawned task: ${nt.title}`);
       }
     }
@@ -171,7 +180,11 @@ export class AIOrchestrationKernel {
       this.totalTokensUsed += verifyTokens;
       governor.recordTokens(verifyTokens);
 
-      eventStore.appendEvent(this.state.run_id, verification.passed ? 'VERIFICATION_PASSED' : 'VERIFICATION_FAILED', { task_id: task.task_id, score: verification.overall_score, summary: verification.summary });
+      const verifyPayload = { task_id: task.task_id, score: verification.overall_score, summary: verification.summary };
+      eventStore.appendEvent(this.state.run_id, verification.passed ? 'VERIFICATION_PASSED' : 'VERIFICATION_FAILED', verifyPayload);
+      if (this.config.persistToCloud) {
+        await persistence.persistEvent(this.state.run_id, verification.passed ? 'VERIFICATION_PASSED' : 'VERIFICATION_FAILED', verifyPayload);
+      }
 
       if (!verification.passed) {
         const fixTask = taskQueue.createTask(this.state.run_id, `Fix: ${task.title}`, `Fix: ${verification.summary}. Details: ${verification.criteria_results.filter(r => !r.passed).map(r => r.fix_suggestion || r.reasoning).join('; ')}`, { priority: task.priority + 10 });
