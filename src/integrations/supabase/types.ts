@@ -14,6 +14,65 @@ export type Database = {
   }
   public: {
     Tables: {
+      atoms: {
+        Row: {
+          atom_type: Database["public"]["Enums"]["atom_type"]
+          content: string
+          content_hash: string
+          created_at: string
+          id: string
+          metadata: Json
+          provenance: Json
+          run_id: string | null
+          superseded_by: string | null
+          task_id: string | null
+          tokens_estimate: number
+          transaction_time: string
+          valid_time_end: string | null
+          valid_time_start: string
+        }
+        Insert: {
+          atom_type?: Database["public"]["Enums"]["atom_type"]
+          content: string
+          content_hash: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          provenance?: Json
+          run_id?: string | null
+          superseded_by?: string | null
+          task_id?: string | null
+          tokens_estimate?: number
+          transaction_time?: string
+          valid_time_end?: string | null
+          valid_time_start?: string
+        }
+        Update: {
+          atom_type?: Database["public"]["Enums"]["atom_type"]
+          content?: string
+          content_hash?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          provenance?: Json
+          run_id?: string | null
+          superseded_by?: string | null
+          task_id?: string | null
+          tokens_estimate?: number
+          transaction_time?: string
+          valid_time_end?: string | null
+          valid_time_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atoms_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "atoms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       context_bank_entries: {
         Row: {
           bank_id: string
@@ -237,6 +296,39 @@ export type Database = {
           label?: string
           metadata?: Json
           node_type?: string
+        }
+        Relationships: []
+      }
+      memory_snapshots: {
+        Row: {
+          atom_count: number
+          atom_ids: string[]
+          created_at: string
+          id: string
+          metadata: Json
+          reason: string
+          run_id: string | null
+          snapshot_hash: string
+        }
+        Insert: {
+          atom_count?: number
+          atom_ids?: string[]
+          created_at?: string
+          id?: string
+          metadata?: Json
+          reason?: string
+          run_id?: string | null
+          snapshot_hash: string
+        }
+        Update: {
+          atom_count?: number
+          atom_ids?: string[]
+          created_at?: string
+          id?: string
+          metadata?: Json
+          reason?: string
+          run_id?: string | null
+          snapshot_hash?: string
         }
         Relationships: []
       }
@@ -500,7 +592,16 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      atom_type:
+        | "text"
+        | "code"
+        | "decision"
+        | "reflection"
+        | "plan"
+        | "verification"
+        | "discovery"
+        | "constraint"
+        | "artifact"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -627,6 +728,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      atom_type: [
+        "text",
+        "code",
+        "decision",
+        "reflection",
+        "plan",
+        "verification",
+        "discovery",
+        "constraint",
+        "artifact",
+      ],
+    },
   },
 } as const
