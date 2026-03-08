@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
+// @ts-ignore - no type declarations available
 import remarkGfm from 'remark-gfm';
 import {
   Send, Brain, CheckCircle2, XCircle, Clock, Zap, ChevronDown, ChevronRight,
