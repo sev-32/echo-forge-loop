@@ -132,8 +132,12 @@ Rules:
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
+        let closed = false;
         const send = (data: any) => {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          if (closed) return;
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          } catch { closed = true; }
         };
 
         send({
@@ -451,8 +455,12 @@ Use the tool to return structured reflection data.`
         });
 
         send({ type: 'run_complete', run_id: runId, total_tokens: totalTokens, task_count: plan.tasks.length });
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
+        if (!closed) {
+          try {
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          } catch { /* already closed */ }
+        }
       }
     });
 
