@@ -95,6 +95,17 @@ interface ThoughtEntry {
   content: string;
 }
 
+interface AuditDecision {
+  verdict: string;
+  confidence: number;
+  reasoning: string;
+  style_analysis?: { tone: string; detail_preference: string; patterns_observed: string[] };
+  next_actions?: Array<{ action: string; target?: string; reason: string }>;
+  synthesis_plan?: { structure: string; key_points: string[]; style_notes: string };
+  additional_tasks_count?: number;
+  loop?: number;
+}
+
 interface RunData {
   runId: string;
   goal: string;
@@ -106,13 +117,18 @@ interface RunData {
   thoughts: ThoughtEntry[];
   reflection: ReflectionData | null;
   knowledgeUpdate: { nodes_added: number; edges_added: number } | null;
-  status: 'planning' | 'executing' | 'reflecting' | 'complete' | 'error';
+  status: 'planning' | 'executing' | 'auditing' | 'synthesizing' | 'reflecting' | 'complete' | 'error';
   totalTokens: number;
   memoryLoaded?: MemoryLoaded;
   memoryDetail?: MemoryDetail;
   lessonsIncorporated?: string[];
   generatedRules?: ProcessRule[];
   activePhase: ThoughtEntry['phase'];
+  auditDecision?: AuditDecision;
+  synthesizedResponse?: string;
+  synthesisFollowUps?: string[];
+  synthesisCaveats?: string[];
+  auditLoops?: number;
 }
 
 // ─── System Activity Log ────────────────────────────────
