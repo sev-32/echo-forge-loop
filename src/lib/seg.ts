@@ -1,8 +1,6 @@
 // ============================================
 // SEG: Shared Evidence Graph — Evidence + Contradiction Detection
 // ============================================
-// Enhances the knowledge graph with evidence types, bitemporal tracking,
-// confidence scores, and automated contradiction detection.
 
 import { supabase } from '@/integrations/supabase/client';
 
@@ -19,7 +17,7 @@ export interface EvidenceNode {
   id: string;
   label: string;
   node_type: string;
-  evidence_type: EvidenceType;
+  evidence_type: string;
   confidence: number;
   witness_id: string | null;
   run_id: string | null;
@@ -35,7 +33,7 @@ export interface EvidenceEdge {
   source_id: string;
   target_id: string;
   relation: string;
-  edge_type: EdgeType;
+  edge_type: string;
   weight: number;
   strength: number;
   witness_id: string | null;
@@ -49,9 +47,9 @@ export interface Contradiction {
   node_a_id: string;
   node_b_id: string;
   similarity_score: number;
-  stance: ContradictionStance;
+  stance: string;
   detection_method: string;
-  resolution: ContradictionResolution;
+  resolution: string | null;
   resolution_reasoning: string | null;
   resolved_by_run_id: string | null;
   resolved_at: string | null;
@@ -62,10 +60,144 @@ export interface Contradiction {
 }
 
 // ============================================
+// Semantic Similarity (token-based Jaccard + overlap)
+// ============================================
+
+function tokenize(text: string): Set<string> {
+  return new Set(
+    text.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length > 2)
+  );
+}
+
+function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 0;
+  let intersection = 0;
+  for (const w of a) { if (b.has(w)) intersection++; }
+  const union = new Set([...a, ...b]).size;
+  return union > 0 ? intersection / union : 0;
+}
+
+/** Check if two labels are semantically similar enough to be potential contradictions */
+function computeSimilarity(labelA: string, labelB: string): number {
+  const tokA = tokenize(labelA);
+  const tokB = tokenize(labelB);
+  return jaccardSimilarity(tokA, tokB);
+}
+
+/** Detect stance between two nodes based on edge context and label analysis */
+function detectStance(nodeA: EvidenceNode, nodeB: EvidenceNode, edges: EvidenceEdge[]): ContradictionStance | null {
+  // Check if there's already a 'contradicts' edge between them
+  const hasContradictEdge = edges.some(e =>
+    (e.source_id === nodeA.id && e.target_id === nodeB.id && e.edge_type === 'contradicts') ||
+    (e.source_id === nodeB.id && e.target_id === nodeA.id && e.edge_type === 'contradicts')
+  );
+  if (hasContradictEdge) return 'contradicts';
+
+  // Negation patterns in labels
+  const negationPairs = [
+    [/\bnot\b/i, /\bshould\b/i], [/\bavoid\b/i, /\buse\b/i],
+    [/\bdon't\b/i, /\bdo\b/i], [/\bnever\b/i, /\balways\b/i],
+    [/\bdeprecated\b/i, /\brecommended\b/i], [/\banti-pattern\b/i, /\bbest practice\b/i],
+    [/\bweak\b/i, /\bstrong\b/i], [/\bunsafe\b/i, /\bsafe\b/i],
+  ];
+
+  const la = nodeA.label.toLowerCase();
+  const lb = nodeB.label.toLowerCase();
+
+  for (const [patA, patB] of negationPairs) {
+    if ((patA.test(la) && patB.test(lb)) || (patB.test(la) && patA.test(lb))) {
+      return 'weakly_contradicts';
+    }
+  }
+
+  // If same topic (high similarity) but different confidence directions, tension
+  if (nodeA.confidence > 0 && nodeB.confidence > 0) {
+    const confDiff = Math.abs(nodeA.confidence - nodeB.confidence);
+    if (confDiff > 0.4) return 'tension';
+  }
+
+  return null;
+}
+
+// ============================================
 // SEG Service
 // ============================================
 
 export class SharedEvidenceGraph {
+
+  // --- Contradiction Detection ---
+
+  /**
+   * Scan new nodes against existing graph for contradictions.
+   * Returns detected contradictions that were persisted.
+   */
+  async detectContradictions(newNodeIds: string[], runId: string, witnessId?: string): Promise<Contradiction[]> {
+    if (newNodeIds.length === 0) return [];
+
+    // Fetch new nodes
+    const { data: newNodes } = await supabase
+      .from('knowledge_nodes').select('*')
+      .in('id', newNodeIds);
+    if (!newNodes || newNodes.length === 0) return [];
+
+    // Fetch existing nodes (excluding new ones) — limit to recent for performance
+    const { data: existingNodes } = await supabase
+      .from('knowledge_nodes').select('*')
+      .not('id', 'in', `(${newNodeIds.join(',')})`)
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (!existingNodes || existingNodes.length === 0) return [];
+
+    // Fetch all edges for stance detection
+    const { data: allEdges } = await supabase
+      .from('knowledge_edges').select('*');
+
+    const edges = (allEdges ?? []) as unknown as EvidenceEdge[];
+    const detected: Contradiction[] = [];
+
+    for (const newNode of newNodes as unknown as EvidenceNode[]) {
+      for (const existing of existingNodes as unknown as EvidenceNode[]) {
+        // Skip if same node type is concept and labels are too different
+        const similarity = computeSimilarity(newNode.label, existing.label);
+
+        // Only consider pairs with meaningful overlap (>= 0.3 Jaccard)
+        if (similarity < 0.3) continue;
+
+        const stance = detectStance(newNode, existing, edges);
+        if (!stance) continue;
+
+        // Create the contradiction record
+        const { data, error } = await supabase
+          .from('contradictions')
+          .insert({
+            node_a_id: newNode.id,
+            node_b_id: existing.id,
+            similarity_score: similarity,
+            stance,
+            detection_method: 'semantic_jaccard',
+            run_id: runId,
+            witness_id: witnessId ?? null,
+            metadata: {
+              node_a_label: newNode.label,
+              node_b_label: existing.label,
+              node_a_confidence: newNode.confidence,
+              node_b_confidence: existing.confidence,
+            },
+          } as any)
+          .select()
+          .single();
+
+        if (!error && data) {
+          detected.push(data as unknown as Contradiction);
+        }
+      }
+    }
+
+    return detected;
+  }
 
   // --- Node Creation with Evidence ---
 
@@ -132,35 +264,6 @@ export class SharedEvidenceGraph {
   }
 
   // --- Contradiction Management ---
-
-  async createContradiction(params: {
-    node_a_id: string;
-    node_b_id: string;
-    similarity_score: number;
-    stance?: ContradictionStance;
-    detection_method?: string;
-    run_id?: string;
-    witness_id?: string;
-    metadata?: Record<string, unknown>;
-  }): Promise<Contradiction | null> {
-    const { data, error } = await supabase
-      .from('contradictions')
-      .insert({
-        node_a_id: params.node_a_id,
-        node_b_id: params.node_b_id,
-        similarity_score: params.similarity_score,
-        stance: params.stance ?? 'contradicts',
-        detection_method: params.detection_method ?? 'semantic',
-        run_id: params.run_id ?? null,
-        witness_id: params.witness_id ?? null,
-        metadata: params.metadata ?? {},
-      } as any)
-      .select()
-      .single();
-
-    if (error) { console.error('SEG: contradiction creation error:', error); return null; }
-    return data as unknown as Contradiction;
-  }
 
   async resolveContradiction(contradictionId: string, resolution: ContradictionResolution, reasoning: string, resolvedByRunId?: string): Promise<boolean> {
     const { error } = await supabase
