@@ -138,6 +138,7 @@ export class AgentSystem {
         case 'auditor': await this.runAuditor(agent); break;
         case 'monitor': await this.runMonitor(agent); break;
         case 'improver': await this.runImprover(agent); break;
+        case 'stagnation': await this.runStagnationDetector(agent); break;
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
