@@ -178,14 +178,48 @@ You MUST assess the goal's complexity and calibrate your response accordingly:
           send({ type: 'task_start', task_index: i, task_id: taskId, title: task.title });
 
           try {
-            // Build context from previous task outputs
-            const prevContext = taskOutputs.map((out, j) => `[Task ${j+1}: ${plan.tasks[j].title}]\n${out.slice(0, 1500)}`).join('\n\n');
+            // Build context from previous task outputs (scale context window to detail level)
+            const detailLevel = task.detail_level || 'standard';
+            const contextSlice = detailLevel === 'exhaustive' ? 3000 : detailLevel === 'comprehensive' ? 2000 : detailLevel === 'standard' ? 1500 : 800;
+            const prevContext = taskOutputs.map((out, j) => `[Task ${j+1}: ${plan.tasks[j].title}]\n${out.slice(0, contextSlice)}`).join('\n\n');
+
+            // Dynamic detail instructions based on calibration
+            const detailInstructions: Record<string, string> = {
+              concise: `OUTPUT CALIBRATION: CONCISE MODE
+- Be brief and focused. No filler, no preamble.
+- ${task.expected_sections || 2} major sections maximum.
+- Total output: 200-500 words. Get to the point fast.
+- Only include what directly answers the task. Skip obvious context.`,
+              standard: `OUTPUT CALIBRATION: STANDARD MODE
+- Be thorough but not exhaustive. Cover all key points with enough detail to be useful.
+- ${task.expected_sections || 4} major sections expected.
+- Total output: 500-1500 words.
+- Include examples where they clarify. Skip edge cases unless critical.
+- Use tables for comparisons, code blocks for technical content.`,
+              comprehensive: `OUTPUT CALIBRATION: COMPREHENSIVE MODE
+- Go deep. This task requires thorough analysis with real substance.
+- ${task.expected_sections || 6} major sections expected.
+- Total output: 1500-3000 words.
+- Include: detailed explanations, multiple examples, tradeoff analysis, implementation considerations.
+- Use diagrams (described in text), tables, code samples, and structured breakdowns.
+- Address edge cases, failure modes, and alternatives.`,
+              exhaustive: `OUTPUT CALIBRATION: EXHAUSTIVE / RESEARCH-GRADE MODE
+- Maximum depth and rigor. This is the most detailed output level.
+- ${task.expected_sections || 10} major sections expected.
+- Total output: 3000-6000+ words.
+- Include: comprehensive frameworks, detailed code implementations, performance analysis, benchmarks, academic references where relevant.
+- Cover: all edge cases, failure modes, security considerations, scalability implications, historical context, competing approaches with pros/cons.
+- Use: tables, code blocks, numbered lists, nested structures, cross-references to other sections.
+- Every claim should be supported with reasoning or evidence.`
+            };
+
+            const depthGuidance = task.depth_guidance || '';
 
             const execResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
               method: "POST",
               headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
               body: JSON.stringify({
-                model: "google/gemini-3-flash-preview",
+                model: detailLevel === 'exhaustive' ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview",
                 messages: [
                   {
                     role: "system",
@@ -193,8 +227,13 @@ You MUST assess the goal's complexity and calibrate your response accordingly:
 
 GOAL: "${plan.goal_summary}"
 APPROACH: "${plan.approach}"
+OVERALL COMPLEXITY: ${plan.overall_complexity || 'moderate'}
 
-You are executing task ${i+1} of ${plan.tasks.length}. Be thorough, specific, and produce real deliverables.
+You are executing task ${i+1} of ${plan.tasks.length}.
+
+${detailInstructions[detailLevel] || detailInstructions.standard}
+
+SPECIFIC DEPTH GUIDANCE: ${depthGuidance}
 
 Format with markdown. Use:
 - ## Headers for major sections
