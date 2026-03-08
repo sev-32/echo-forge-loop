@@ -308,11 +308,21 @@ IMPORTANT: In your planning_reasoning, explain your thought process — why this
           send({ type: 'task_start', task_index: i, task_id: taskId, title: task.title });
 
           try {
-            const contextSlice = detailLevel === 'exhaustive' ? 3000 : detailLevel === 'comprehensive' ? 2000 : detailLevel === 'standard' ? 1500 : 800;
-            const prevContext = taskOutputs.map((out, j) => `[Task ${j+1}: ${plan.tasks[j].title}]\n${out.slice(0, contextSlice)}`).join('\n\n');
+            // Full context chaining — pass as much as will fit (up to ~12k chars total)
+            const maxContextTotal = detailLevel === 'exhaustive' ? 16000 : detailLevel === 'comprehensive' ? 12000 : 6000;
+            let contextBudget = maxContextTotal;
+            const contextParts: string[] = [];
+            // Prioritize recent tasks — they're most relevant
+            for (let j = taskOutputs.length - 1; j >= 0 && contextBudget > 500; j--) {
+              const slice = taskOutputs[j].slice(0, contextBudget);
+              contextParts.unshift(`[Task ${j+1}: ${plan.tasks[j].title}]\n${slice}`);
+              contextBudget -= slice.length;
+            }
+            const prevContext = contextParts.join('\n\n');
 
             if (i > 0) {
-              send({ type: 'thinking', phase: 'execute', content: `Injecting ${i} previous task output(s) as context (${contextSlice} tokens each).` });
+              const totalContextChars = prevContext.length;
+              send({ type: 'thinking', phase: 'execute', content: `Injecting ${i} previous task output(s) as full context (${totalContextChars.toLocaleString()} chars, budget: ${maxContextTotal.toLocaleString()}).` });
             }
 
             // Execute task
