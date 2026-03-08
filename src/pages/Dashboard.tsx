@@ -10,11 +10,13 @@ import { TestAuditPanel } from '@/components/TestAuditPanel';
 import { AgentPanel } from '@/components/AgentPanel';
 import { RegressionDashboard } from '@/components/RegressionDashboard';
 import { KnowledgeGraphPanel } from '@/components/KnowledgeGraphPanel';
+import { RunHistoryPanel } from '@/components/RunHistoryPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import {
   MessageSquare, LayoutDashboard, Brain, Bot, BarChart3,
-  Network, Activity, FlaskConical, BookOpen, PanelRightOpen, PanelRightClose
+  Network, Activity, FlaskConical, BookOpen, PanelRightOpen, PanelRightClose,
+  History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
