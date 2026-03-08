@@ -240,6 +240,45 @@ export type Database = {
         }
         Relationships: []
       }
+      process_rules: {
+        Row: {
+          active: boolean
+          category: string
+          confidence: number
+          created_at: string
+          id: string
+          rule_text: string
+          source_run_id: string | null
+          times_applied: number
+          times_helped: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          confidence?: number
+          created_at?: string
+          id?: string
+          rule_text: string
+          source_run_id?: string | null
+          times_applied?: number
+          times_helped?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          confidence?: number
+          created_at?: string
+          id?: string
+          rule_text?: string
+          source_run_id?: string | null
+          times_applied?: number
+          times_helped?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       snapshots: {
         Row: {
           created_at: string
