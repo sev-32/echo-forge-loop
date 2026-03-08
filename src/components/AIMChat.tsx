@@ -91,7 +91,7 @@ interface MemoryDetail {
 interface ThoughtEntry {
   id: string;
   timestamp: number;
-  phase: 'memory' | 'planning' | 'execute' | 'verify' | 'retry' | 'reflect' | 'evolve' | 'complete';
+  phase: 'memory' | 'planning' | 'execute' | 'verify' | 'retry' | 'audit' | 'synthesize' | 'reflect' | 'evolve' | 'complete';
   content: string;
 }
 
