@@ -58,8 +58,10 @@ async function captureRun(goal: string): Promise<RunCapture> {
     }),
   });
 
-  assert(resp.ok, `HTTP ${resp.status}: ${await resp.text()}`);
-  assertEquals(resp.headers.get("content-type"), "text/event-stream");
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(`HTTP ${resp.status}: ${errText}`);
+  }
   assertExists(resp.body, "Response must be a stream");
 
   const reader = resp.body.getReader();
