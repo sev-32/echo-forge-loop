@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.ai-test-gen]
 verify_jwt = false
+
+[functions.ai-audit]
+verify_jwt = false
+
+[functions.aim-chat]
+verify_jwt = false
