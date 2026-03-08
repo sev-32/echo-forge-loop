@@ -87,6 +87,7 @@ export class AgentSystem {
     this.registerAgent({ id: 'auditor-main', name: 'System Auditor', type: 'auditor', intervalMs: 60_000, enabled: true });
     this.registerAgent({ id: 'monitor-health', name: 'Health Monitor', type: 'monitor', intervalMs: 30_000, enabled: true });
     this.registerAgent({ id: 'improver-auto', name: 'Auto Improver', type: 'improver', intervalMs: 90_000, enabled: true });
+    this.registerAgent({ id: 'stagnation-detect', name: 'Stagnation Detector', type: 'stagnation' as any, intervalMs: 45_000, enabled: true });
   }
 
   registerAgent(config: AgentConfig) {
