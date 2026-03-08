@@ -781,7 +781,8 @@ function buildMemoryContext(reflections: any[], rules: any[], knowledge: any[]):
 const detailInstructions: Record<string, string> = {
   concise: `OUTPUT CALIBRATION: CONCISE MODE
 - Brief and focused. No filler.
-- 1-3 major sections. 200-500 words total.`,
+- 1-3 major sections. 200-500 words total.
+- Get straight to the point.`,
   standard: `OUTPUT CALIBRATION: STANDARD MODE
 - Thorough but not exhaustive.
 - 3-5 major sections. 500-1500 words.
@@ -789,47 +790,85 @@ const detailInstructions: Record<string, string> = {
   comprehensive: `OUTPUT CALIBRATION: COMPREHENSIVE MODE
 - Deep analysis with real substance.
 - 5-8 major sections. 1500-3000 words.
-- Detailed explanations, multiple examples, tradeoff analysis.`,
+- Detailed explanations, multiple examples, tradeoff analysis.
+- Cover edge cases and nuances.`,
   exhaustive: `OUTPUT CALIBRATION: EXHAUSTIVE / RESEARCH-GRADE MODE
 - Maximum depth and rigor.
 - 8-15 major sections. 3000-6000+ words.
-- Full frameworks, code implementations, benchmarks, edge cases, security, scalability.`,
+- Full frameworks, code implementations, benchmarks, edge cases, security, scalability.
+- Treat this as a professional reference document.`,
 };
 
-async function executeTask(
-  apiKey: string, plan: any, task: any, index: number,
-  detailLevel: string, prevContext: string,
-  send: (data: any) => void,
-  retryDiagnosis: string | null
-): Promise<{ output: string; tokens: number }> {
-  const retryContext = retryDiagnosis
-    ? `\n\n## ⚠️ RETRY — PREVIOUS ATTEMPT FAILED\nDiagnosis: ${retryDiagnosis}\nFix the issues identified above. Focus specifically on the unmet criteria.`
-    : '';
+// Word count targets per detail level for continuation logic
+const wordTargets: Record<string, { min: number; ideal: number; max: number }> = {
+  concise:       { min: 150, ideal: 350, max: 600 },
+  standard:      { min: 400, ideal: 900, max: 1800 },
+  comprehensive: { min: 1200, ideal: 2200, max: 4000 },
+  exhaustive:    { min: 2500, ideal: 4500, max: 8000 },
+};
 
-  const model = detailLevel === 'exhaustive' ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview";
+function countWords(text: string): number {
+  return text.split(/\s+/).filter(w => w.length > 0).length;
+}
 
-  const execResponse = await callAI(apiKey, model, [
+// ─── Section-based execution for deep tasks ──────────
+async function planSections(
+  apiKey: string, plan: any, task: any, detailLevel: string
+): Promise<{ sections: Array<{ title: string; guidance: string; wordTarget: number }>; tokens: number }> {
+  const resp = await callAI(apiKey, "google/gemini-2.5-flash-lite", [
     {
       role: "system",
-      content: `You are an AIM-OS Task Executor — part of a self-evolving AI operating system.
-
-GOAL: "${plan.goal_summary}"
-APPROACH: "${plan.approach}"
-OVERALL COMPLEXITY: ${plan.overall_complexity || 'moderate'}
-Task ${index+1} of ${plan.tasks.length}.
-
-${detailInstructions[detailLevel] || detailInstructions.standard}
-
-SPECIFIC DEPTH GUIDANCE: ${task.depth_guidance || ''}
-${retryContext}
-
-Format with markdown: ## Headers, bullets, \`code blocks\`, tables, **bold**.
-${prevContext ? `\n--- PREVIOUS TASK CONTEXT ---\n${prevContext}` : ''}`
+      content: `You are an outline planner. Given a task, produce a detailed section outline. Each section should have a clear title, specific guidance on what to cover, and a word target. The sections should be ordered logically and cover the task comprehensively.`
     },
     {
       role: "user",
-      content: `## Task: ${task.title}\n\n${task.prompt}\n\n### Acceptance Criteria\n${task.acceptance_criteria.map((c: string, j: number) => `${j+1}. ${c}`).join('\n')}`
+      content: `Task: ${task.title}\nPrompt: ${task.prompt}\nDetail level: ${detailLevel}\nAcceptance criteria:\n${task.acceptance_criteria.map((c: string, i: number) => `${i+1}. ${c}`).join('\n')}\n\nPlan 4-10 sections depending on the detail level. For "${detailLevel}" aim for ${wordTargets[detailLevel]?.ideal || 1000} total words across all sections.`
     }
+  ], [{
+    type: "function",
+    function: {
+      name: "plan_sections",
+      description: "Plan document sections",
+      parameters: {
+        type: "object",
+        properties: {
+          sections: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                guidance: { type: "string", description: "Specific instructions for what this section should cover" },
+                word_target: { type: "number", description: "Target word count for this section" }
+              },
+              required: ["title", "guidance", "word_target"]
+            }
+          }
+        },
+        required: ["sections"]
+      }
+    }
+  }], { type: "function", function: { name: "plan_sections" } });
+
+  let tokens = 0;
+  let sections: any[] = [];
+  if (resp.ok) {
+    const data = await resp.json();
+    tokens = data.usage?.total_tokens || 0;
+    const parsed = parseToolArgs(data);
+    sections = parsed.sections || [];
+  }
+  return { sections, tokens };
+}
+
+// ─── Stream a single chunk of output ─────────────────
+async function streamContent(
+  apiKey: string, model: string, systemPrompt: string, userPrompt: string,
+  send: (data: any) => void, taskIndex: number
+): Promise<{ output: string; tokens: number }> {
+  const execResponse = await callAI(apiKey, model, [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt }
   ], undefined, undefined, true);
 
   if (!execResponse.ok) {
@@ -839,7 +878,7 @@ ${prevContext ? `\n--- PREVIOUS TASK CONTEXT ---\n${prevContext}` : ''}`
   const reader = execResponse.body!.getReader();
   const decoder = new TextDecoder();
   let buf = "";
-  let taskOutput = "";
+  let output = "";
   let tokens = 0;
 
   while (true) {
@@ -858,15 +897,165 @@ ${prevContext ? `\n--- PREVIOUS TASK CONTEXT ---\n${prevContext}` : ''}`
         const p = JSON.parse(json);
         const content = p.choices?.[0]?.delta?.content;
         if (content) {
-          taskOutput += content;
-          send({ type: 'task_delta', task_index: index, delta: content });
+          output += content;
+          send({ type: 'task_delta', task_index: taskIndex, delta: content });
         }
         if (p.usage) tokens += p.usage.total_tokens || 0;
       } catch { /* partial */ }
     }
   }
 
-  return { output: taskOutput, tokens };
+  return { output, tokens };
+}
+
+// ─── Main task execution with dynamic depth ──────────
+async function executeTask(
+  apiKey: string, plan: any, task: any, index: number,
+  detailLevel: string, prevContext: string,
+  send: (data: any) => void,
+  retryDiagnosis: string | null
+): Promise<{ output: string; tokens: number }> {
+  const retryContext = retryDiagnosis
+    ? `\n\n## ⚠️ RETRY — PREVIOUS ATTEMPT FAILED\nDiagnosis: ${retryDiagnosis}\nFix the issues identified above. Focus specifically on the unmet criteria.`
+    : '';
+
+  const model = detailLevel === 'exhaustive' ? "google/gemini-2.5-pro" :
+                detailLevel === 'comprehensive' ? "google/gemini-2.5-flash" :
+                "google/gemini-3-flash-preview";
+
+  const targets = wordTargets[detailLevel] || wordTargets.standard;
+  const needsSectionExecution = (detailLevel === 'comprehensive' || detailLevel === 'exhaustive') && !retryDiagnosis;
+
+  // ════════════════════════════════════════════════════
+  // SECTION-BY-SECTION EXECUTION for deep tasks
+  // ════════════════════════════════════════════════════
+  if (needsSectionExecution) {
+    send({ type: 'thinking', phase: 'execute', content: `Task requires ${detailLevel} depth — planning sections for structured execution...` });
+
+    const sectionPlan = await planSections(apiKey, plan, task, detailLevel);
+    let totalTokens = sectionPlan.tokens;
+
+    if (sectionPlan.sections.length > 0) {
+      send({ type: 'thinking', phase: 'execute', content: `Section plan: ${sectionPlan.sections.length} sections — ${sectionPlan.sections.map(s => `"${s.title}" (~${s.word_target}w)`).join(', ')}` });
+      send({ type: 'task_sections_planned', task_index: index, sections: sectionPlan.sections.map((s: any) => ({ title: s.title, word_target: s.word_target })) });
+
+      let fullOutput = "";
+      for (let si = 0; si < sectionPlan.sections.length; si++) {
+        const section = sectionPlan.sections[si];
+        send({ type: 'thinking', phase: 'execute', content: `Writing section ${si + 1}/${sectionPlan.sections.length}: "${section.title}" (~${section.word_target} words)` });
+        send({ type: 'task_section_start', task_index: index, section_index: si, section_title: section.title });
+
+        const sectionResult = await streamContent(
+          apiKey, model,
+          `You are an AIM-OS Task Executor writing one section of a larger document.
+
+GOAL: "${plan.goal_summary}"
+Task: "${task.title}" — Section ${si + 1} of ${sectionPlan.sections.length}
+${detailInstructions[detailLevel]}
+
+SECTION INSTRUCTIONS: ${section.guidance}
+TARGET WORD COUNT: ~${section.word_target} words for THIS section.
+DO NOT write content for other sections. Focus ONLY on "${section.title}".
+
+${fullOutput.length > 0 ? `\n--- DOCUMENT SO FAR ---\n${fullOutput.slice(-4000)}` : ''}
+${prevContext ? `\n--- PREVIOUS TASK CONTEXT ---\n${prevContext}` : ''}
+${retryContext}
+
+Format with markdown. Start with ## ${section.title}`,
+          `Write the "${section.title}" section.\n\nGuidance: ${section.guidance}\n\nRelevant acceptance criteria:\n${task.acceptance_criteria.map((c: string, j: number) => `${j+1}. ${c}`).join('\n')}`,
+          send, index
+        );
+
+        totalTokens += sectionResult.tokens;
+        fullOutput += sectionResult.output + "\n\n";
+
+        const sectionWords = countWords(sectionResult.output);
+        send({ type: 'thinking', phase: 'execute', content: `Section "${section.title}" complete: ${sectionWords} words (target: ${section.word_target})` });
+      }
+
+      // ─── Continuation check ───
+      const totalWords = countWords(fullOutput);
+      send({ type: 'thinking', phase: 'execute', content: `Total output: ${totalWords} words (target: ${targets.min}-${targets.ideal} words)` });
+
+      if (totalWords < targets.min) {
+        send({ type: 'thinking', phase: 'execute', content: `Output below minimum (${totalWords}/${targets.min}). Running continuation pass to deepen coverage...` });
+        send({ type: 'task_continuation', task_index: index, reason: 'below_minimum', current_words: totalWords, target_words: targets.min });
+
+        const contResult = await streamContent(
+          apiKey, model,
+          `You are expanding a document that is too short. Add depth, examples, and detail to reach the target word count.
+
+DOCUMENT SO FAR:
+${fullOutput}
+
+TARGET: At least ${targets.min} words total (currently ${totalWords}).
+Add new subsections, deeper examples, edge cases, or implementation details. Do NOT repeat existing content.`,
+          `Expand this document to at least ${targets.min} words. Add substantive new content.`,
+          send, index
+        );
+        totalTokens += contResult.tokens;
+        fullOutput += "\n\n" + contResult.output;
+        const newWords = countWords(fullOutput);
+        send({ type: 'thinking', phase: 'execute', content: `After continuation: ${newWords} words` });
+      }
+
+      return { output: fullOutput, tokens: totalTokens };
+    }
+    // Fall through to single-pass if section planning fails
+  }
+
+  // ════════════════════════════════════════════════════
+  // SINGLE-PASS EXECUTION (concise/standard or fallback)
+  // ════════════════════════════════════════════════════
+  const systemPrompt = `You are an AIM-OS Task Executor — part of a self-evolving AI operating system.
+
+GOAL: "${plan.goal_summary}"
+APPROACH: "${plan.approach}"
+OVERALL COMPLEXITY: ${plan.overall_complexity || 'moderate'}
+Task ${index+1} of ${plan.tasks.length}.
+
+${detailInstructions[detailLevel] || detailInstructions.standard}
+
+CRITICAL OUTPUT LENGTH: You MUST produce at least ${targets.min} words. Aim for ~${targets.ideal} words.
+SPECIFIC DEPTH GUIDANCE: ${task.depth_guidance || ''}
+${retryContext}
+
+Format with markdown: ## Headers, bullets, \`code blocks\`, tables, **bold**.
+${prevContext ? `\n--- PREVIOUS TASK CONTEXT ---\n${prevContext}` : ''}`;
+
+  const result = await streamContent(
+    apiKey, model, systemPrompt,
+    `## Task: ${task.title}\n\n${task.prompt}\n\n### Acceptance Criteria\n${task.acceptance_criteria.map((c: string, j: number) => `${j+1}. ${c}`).join('\n')}`,
+    send, index
+  );
+
+  // ─── Auto-continuation for under-length output ───
+  let totalTokens = result.tokens;
+  let fullOutput = result.output;
+  const wordCount = countWords(fullOutput);
+
+  if (wordCount < targets.min && !retryDiagnosis) {
+    send({ type: 'thinking', phase: 'execute', content: `Output only ${wordCount} words (min: ${targets.min}). Auto-continuing...` });
+    send({ type: 'task_continuation', task_index: index, reason: 'below_minimum', current_words: wordCount, target_words: targets.min });
+
+    const contResult = await streamContent(
+      apiKey, model,
+      `You are continuing a document that was cut short. Pick up EXACTLY where the previous output left off. Do NOT repeat any content.
+
+PREVIOUS OUTPUT:
+${fullOutput}
+
+Continue writing to complete the task. Add at least ${targets.min - wordCount} more words of substantive content.`,
+      `Continue writing. The document needs at least ${targets.min - wordCount} more words to meet the ${detailLevel} detail level.`,
+      send, index
+    );
+
+    totalTokens += contResult.tokens;
+    fullOutput += contResult.output;
+    send({ type: 'thinking', phase: 'execute', content: `After continuation: ${countWords(fullOutput)} words` });
+  }
+
+  return { output: fullOutput, tokens: totalTokens };
 }
 
 async function verifyTask(apiKey: string, task: any, output: string): Promise<{ result: any; tokens: number }> {
