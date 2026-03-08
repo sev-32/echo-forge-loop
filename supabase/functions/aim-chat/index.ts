@@ -563,8 +563,45 @@ Apply any active process rules from memory.`
 
         // ═══════════════════════════════════════════════════
         // PHASE 2: EXECUTE + VERIFY + RETRY (with VIF + CMC + CAS)
+        // Parallelized: group tasks by dependency layers
         // ═══════════════════════════════════════════════════
+        const isSimple = (plan.overall_complexity || 'moderate') === 'simple';
+
+        // Build dependency layers for parallel execution
+        function buildExecutionLayers(tasks: any[]): number[][] {
+          const layers: number[][] = [];
+          const completed = new Set<number>();
+          const remaining = new Set(tasks.map((_: any, i: number) => i));
+
+          while (remaining.size > 0) {
+            const layer: number[] = [];
+            for (const i of remaining) {
+              const deps = (tasks[i].depends_on || []) as number[];
+              if (deps.every((d: number) => completed.has(d))) {
+                layer.push(i);
+              }
+            }
+            if (layer.length === 0) {
+              // Circular deps fallback — just run remaining sequentially
+              layer.push(...remaining);
+              remaining.clear();
+            }
+            for (const i of layer) { remaining.delete(i); completed.add(i); }
+            layers.push(layer);
+          }
+          return layers;
+        }
+
+        const layers = buildExecutionLayers(plan.tasks);
+        send({ type: 'thinking', phase: 'execute', content: `Executing ${plan.tasks.length} tasks in ${layers.length} parallel layer(s): [${layers.map(l => l.length).join(', ')}]` });
+
+        // Pre-fill arrays with nulls
         for (let i = 0; i < plan.tasks.length; i++) {
+          taskOutputs.push('');
+          taskVerifications.push(null);
+        }
+
+        async function executeOneTask(i: number) {
           const task = plan.tasks[i];
           const taskId = taskIds[i];
           const stepId = stepIds[i];
@@ -572,29 +609,39 @@ Apply any active process rules from memory.`
           await supabase.from('tasks').update({ status: 'active' }).eq('id', taskId);
           if (stepId) await updatePlanStep(stepId, { status: 'active', started_at: new Date().toISOString() });
 
-          const detailLevel = task.detail_level || 'standard';
-          const model = detailLevel === 'exhaustive' ? "google/gemini-2.5-pro" : detailLevel === 'comprehensive' ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
+          const detailLevel = isSimple ? 'concise' : (task.detail_level || 'standard');
+          const model = isSimple ? "google/gemini-3-flash-preview" : detailLevel === 'exhaustive' ? "google/gemini-2.5-pro" : detailLevel === 'comprehensive' ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
           const role = task.assigned_role || mapTaskRole(task);
 
           send({ type: 'thinking', phase: 'execute', content: `Task ${i+1}/${plan.tasks.length}: "${task.title}" [Role: ${role}]` });
-          send({ type: 'thinking', phase: 'execute', content: `Detail: ${detailLevel} • Model: ${model.split('/')[1]} • Sections: ${task.expected_sections || '?'}` });
+          send({ type: 'thinking', phase: 'execute', content: `Detail: ${detailLevel} • Model: ${model.split('/')[1]}${isSimple ? ' • FAST PATH' : ''}` });
           send({ type: 'task_start', task_index: i, task_id: taskId, title: task.title, role, step_id: stepId });
 
           try {
-            // Context chaining
-            const maxContextTotal = detailLevel === 'exhaustive' ? 16000 : detailLevel === 'comprehensive' ? 12000 : 6000;
+            // Context chaining (only from completed earlier layers)
+            const maxContextTotal = isSimple ? 3000 : detailLevel === 'exhaustive' ? 16000 : detailLevel === 'comprehensive' ? 12000 : 6000;
             let contextBudget = maxContextTotal;
             const contextParts: string[] = [];
-            for (let j = taskOutputs.length - 1; j >= 0 && contextBudget > 500; j--) {
+            for (let j = i - 1; j >= 0 && contextBudget > 500; j--) {
+              if (!taskOutputs[j]) continue;
               const slice = taskOutputs[j].slice(0, contextBudget);
               contextParts.unshift(`[Task ${j+1}: ${plan.tasks[j].title}]\n${slice}`);
               contextBudget -= slice.length;
             }
             const prevContext = contextParts.join('\n\n');
 
-            // Execute
+            // Execute — simple tasks skip section planning entirely
             const execStartMs = Date.now();
-            let taskOutput = await executeTask(LOVABLE_API_KEY, plan, task, i, detailLevel, prevContext, send, null);
+            let taskOutput: { output: string; tokens: number };
+            if (isSimple) {
+              // Fast path: single-pass, no section planning, no continuation
+              taskOutput = await streamContent(LOVABLE_API_KEY, model,
+                `You are AIM-OS. Answer concisely and accurately.\nGOAL: "${plan.goal_summary}"\n${detailInstructions.concise}\n${prevContext ? `\n--- CONTEXT ---\n${prevContext}` : ''}`,
+                `## Task: ${task.title}\n\n${task.prompt}\n\n### Criteria\n${task.acceptance_criteria.map((c: string, j: number) => `${j+1}. ${c}`).join('\n')}`,
+                send, i);
+            } else {
+              taskOutput = await executeTask(LOVABLE_API_KEY, plan, task, i, detailLevel, prevContext, send, null);
+            }
             const execLatencyMs = Date.now() - execStartMs;
             totalTokens += taskOutput.tokens;
 
@@ -682,8 +729,8 @@ Apply any active process rules from memory.`
               payload: { task_id: taskId, score: verification.result.score, passed: verification.result.passed, witness_id: verifyWitness?.id, attempt: 1 },
             });
 
-            // ─── RETRY ───
-            if (!verification.result.passed && verification.result.score < 70) {
+            // ─── RETRY (skip for simple/fast path) ───
+            if (!isSimple && !verification.result.passed && verification.result.score < 70) {
               send({ type: 'thinking', phase: 'retry', content: `Score ${verification.result.score}/100 below threshold. Retrying with adaptation.` });
               send({ type: 'task_retry_start', task_index: i, reason: verification.result.summary });
 
@@ -704,8 +751,8 @@ Apply any active process rules from memory.`
               send({ type: 'task_verified', task_index: i, verification: verification.result });
             }
 
-            taskOutputs.push(taskOutput.output);
-            taskVerifications.push(verification.result);
+            taskOutputs[i] = taskOutput.output;
+            taskVerifications[i] = verification.result;
 
             const finalStatus = verification.result.passed ? 'done' : 'failed';
             await supabase.from('tasks').update({
@@ -727,7 +774,6 @@ Apply any active process rules from memory.`
             }
 
             // ─── CAS: Cognitive snapshot after each task ───
-            // Extract concepts from task output for concept tracking
             const taskConcepts = extractConcepts(task.title, taskOutput.output);
             const prevConcepts = [...activeConcepts];
             activeConcepts = taskConcepts;
@@ -760,8 +806,18 @@ Apply any active process rules from memory.`
             if (stepId) await updatePlanStep(stepId, { status: 'failed', error: err.message, completed_at: new Date().toISOString() });
             await supabase.from('events').insert({ run_id: runId, event_type: 'ERROR_RAISED', payload: { task_id: taskId, error: err.message } });
             send({ type: 'task_error', task_index: i, error: err.message });
-            taskOutputs.push(`ERROR: ${err.message}`);
-            taskVerifications.push({ passed: false, score: 0, summary: err.message });
+            taskOutputs[i] = `ERROR: ${err.message}`;
+            taskVerifications[i] = { passed: false, score: 0, summary: err.message };
+          }
+        }
+
+        // Execute layers — tasks within same layer run in parallel
+        for (const layer of layers) {
+          if (layer.length === 1) {
+            await executeOneTask(layer[0]);
+          } else {
+            send({ type: 'thinking', phase: 'execute', content: `Running ${layer.length} independent tasks in parallel...` });
+            await Promise.all(layer.map(i => executeOneTask(i)));
           }
         }
 
