@@ -24,9 +24,9 @@ export default function Dashboard() {
   const handleStartDemo = useCallback(async () => {
     try {
       await startRun([
-        { title: 'Analyze system architecture', prompt: 'Review the current system architecture and identify areas for improvement. Consider scalability, maintainability, and performance.', priority: 80, acceptance_criteria: [{ description: 'Identifies at least 3 improvement areas', type: 'rubric' }, { description: 'Provides actionable recommendations', type: 'rubric' }] },
-        { title: 'Design context management strategy', prompt: 'Create a strategy for managing context across long-running AI sessions. Address token limits, priority-based pruning, and knowledge persistence.', priority: 70, acceptance_criteria: [{ description: 'Addresses token budget constraints', type: 'rubric' }, { description: 'Includes pruning policy', type: 'rubric' }] },
-        { title: 'Implement self-improvement protocol', prompt: 'Define a protocol for the AI system to identify and apply process improvements after each task cycle.', priority: 60, acceptance_criteria: [{ description: 'Protocol is iterative and measurable', type: 'rubric' }] },
+        { title: 'Analyze system architecture', prompt: 'Review the current system architecture and identify areas for improvement. Consider scalability, maintainability, and performance.', priority: 80, acceptance_criteria: [{ description: 'Identifies at least 3 improvement areas', type: 'custom' as const, id: 'ac1', config: {} }, { description: 'Provides actionable recommendations', type: 'custom' as const, id: 'ac2', config: {} }] },
+        { title: 'Design context management strategy', prompt: 'Create a strategy for managing context across long-running AI sessions. Address token limits, priority-based pruning, and knowledge persistence.', priority: 70, acceptance_criteria: [{ description: 'Addresses token budget constraints', type: 'custom' as const, id: 'ac3', config: {} }, { description: 'Includes pruning policy', type: 'custom' as const, id: 'ac4', config: {} }] },
+        { title: 'Implement self-improvement protocol', prompt: 'Define a protocol for the AI system to identify and apply process improvements after each task cycle.', priority: 60, acceptance_criteria: [{ description: 'Protocol is iterative and measurable', type: 'custom' as const, id: 'ac5', config: {} }] },
       ]);
       toast.success('Run started with 3 tasks');
     } catch (e) {
