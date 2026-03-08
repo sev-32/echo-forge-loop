@@ -26,6 +26,8 @@ interface TaskPlan {
   status: 'queued' | 'running' | 'verifying' | 'done' | 'failed';
   priority: number;
   criteriaCount: number;
+  detailLevel: 'concise' | 'standard' | 'comprehensive' | 'exhaustive';
+  expectedSections: number;
   output: string;
   verification?: { passed: boolean; score: number; summary: string; criteria_results?: Array<{ criterion: string; met: boolean; reasoning: string }> };
 }
