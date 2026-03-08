@@ -97,7 +97,7 @@ export class CoreMemoryController {
         valid_time_end: params.valid_time_end ?? null,
         metadata: params.metadata ?? {},
         tokens_estimate,
-      })
+      } as any)
       .select()
       .single();
 
