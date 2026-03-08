@@ -5,10 +5,12 @@ import {
   Send, Brain, CheckCircle2, XCircle, Clock, Zap, ChevronDown, ChevronRight,
   Shield, Sparkles, Target, ArrowRight, Loader2, Trash2, User,
   Activity, Database, GitBranch, BarChart3, BookOpen, Network as NetworkIcon,
-  RefreshCw, Lightbulb, TrendingUp, FlaskConical, Scale
+  RefreshCw, Lightbulb, TrendingUp, FlaskConical, Scale, Eye, MessageCircleQuestion,
+  Cpu, HelpCircle, Layers, Gauge, Workflow, ScanEye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 
 // ─── Types ──────────────────────────────────────────────
@@ -30,6 +32,9 @@ interface TaskPlan {
   detailLevel: 'concise' | 'standard' | 'comprehensive' | 'exhaustive';
   expectedSections: number;
   output: string;
+  reasoning?: string;
+  depthGuidance?: string;
+  acceptanceCriteria?: string[];
   verification?: { passed: boolean; score: number; summary: string; criteria_results?: Array<{ criterion: string; met: boolean; reasoning: string }> };
   retryDiagnosis?: string;
   retried?: boolean;
@@ -59,6 +64,7 @@ interface ProcessRule {
 
 interface ReflectionData {
   summary: string;
+  internal_monologue?: string;
   lessons: string[];
   knowledge_nodes: Array<{ label: string; node_type: string }>;
   knowledge_edges?: Array<{ source_label: string; target_label: string; relation: string }>;
@@ -76,22 +82,40 @@ interface MemoryLoaded {
   knowledge: number;
 }
 
+interface MemoryDetail {
+  reflections: Array<{ content: string; tags: string[]; planning_score?: number; strategy_score?: number }>;
+  rules: Array<{ id: string; text: string; category: string; confidence: number; times_applied: number; times_helped: number }>;
+  knowledge: Array<{ label: string; type: string }>;
+}
+
+interface ThoughtEntry {
+  id: string;
+  timestamp: number;
+  phase: 'memory' | 'planning' | 'execute' | 'verify' | 'retry' | 'reflect' | 'evolve' | 'complete';
+  content: string;
+}
+
 interface RunData {
   runId: string;
   goal: string;
   approach: string;
+  planningReasoning: string;
+  openQuestions: string[];
   overallComplexity: 'simple' | 'moderate' | 'complex' | 'research-grade';
   tasks: TaskPlan[];
+  thoughts: ThoughtEntry[];
   reflection: ReflectionData | null;
   knowledgeUpdate: { nodes_added: number; edges_added: number } | null;
   status: 'planning' | 'executing' | 'reflecting' | 'complete' | 'error';
   totalTokens: number;
   memoryLoaded?: MemoryLoaded;
+  memoryDetail?: MemoryDetail;
   lessonsIncorporated?: string[];
   generatedRules?: ProcessRule[];
+  activePhase: ThoughtEntry['phase'];
 }
 
-// ─── System Activity Log (shared across runs) ───────────
+// ─── System Activity Log ────────────────────────────────
 export interface SystemEvent {
   id: string;
   timestamp: number;
@@ -122,11 +146,11 @@ export function useSystemEvents() {
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aim-chat`;
 
 async function streamAIMOS({
-  conversationHistory,
-  onPlan, onTaskStart, onTaskDelta, onTaskVerifyStart, onTaskVerified,
+  conversationHistory, onPlan, onTaskStart, onTaskDelta, onTaskVerifyStart, onTaskVerified,
   onTaskComplete, onTaskError, onReflectionStart, onReflection,
   onKnowledgeUpdate, onRunComplete, onError,
   onTaskRetryStart, onTaskRetryDiagnosis, onProcessEvaluation, onRulesGenerated,
+  onThinking, onMemoryDetail, onOpenQuestions,
 }: {
   conversationHistory: { role: string; content: string }[];
   onPlan: (data: any) => void;
@@ -145,6 +169,9 @@ async function streamAIMOS({
   onTaskRetryDiagnosis: (taskIndex: number, diagnosis: string) => void;
   onProcessEvaluation: (data: any) => void;
   onRulesGenerated: (data: any) => void;
+  onThinking: (phase: string, content: string) => void;
+  onMemoryDetail: (data: MemoryDetail) => void;
+  onOpenQuestions: (questions: string[]) => void;
 }) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
@@ -183,6 +210,9 @@ async function streamAIMOS({
       try {
         const evt = JSON.parse(json);
         switch (evt.type) {
+          case 'thinking': onThinking(evt.phase, evt.content); break;
+          case 'memory_detail': onMemoryDetail(evt); break;
+          case 'open_questions': onOpenQuestions(evt.questions); break;
           case 'plan': onPlan(evt); break;
           case 'task_start': onTaskStart(evt.task_index, evt.task_id, evt.title); break;
           case 'task_delta': onTaskDelta(evt.task_index, evt.delta); break;
@@ -207,7 +237,7 @@ async function streamAIMOS({
   }
 }
 
-// ─── Markdown Components ────────────────────────────────
+// ─── Markdown Renderer ──────────────────────────────────
 const mdComponents = {
   h1: ({ children }: any) => <h1 className="text-sm font-bold text-foreground mt-3 mb-1.5">{children}</h1>,
   h2: ({ children }: any) => <h2 className="text-xs font-bold text-foreground mt-2.5 mb-1">{children}</h2>,
@@ -230,7 +260,299 @@ const mdComponents = {
   hr: () => <hr className="border-border my-3" />,
 };
 
-// ─── Task Status ────────────────────────────────────────
+// ─── Phase Config ───────────────────────────────────────
+const phaseConfig: Record<string, { icon: any; label: string; color: string }> = {
+  memory: { icon: Database, label: 'Memory', color: 'text-[hsl(var(--status-info))]' },
+  planning: { icon: Target, label: 'Planning', color: 'text-primary' },
+  execute: { icon: Zap, label: 'Execute', color: 'text-accent' },
+  verify: { icon: Shield, label: 'Verify', color: 'text-[hsl(var(--status-warning))]' },
+  retry: { icon: RefreshCw, label: 'Retry', color: 'text-[hsl(var(--status-blocked))]' },
+  reflect: { icon: Sparkles, label: 'Reflect', color: 'text-[hsl(var(--status-pending))]' },
+  evolve: { icon: TrendingUp, label: 'Evolve', color: 'text-primary' },
+  complete: { icon: CheckCircle2, label: 'Complete', color: 'text-[hsl(var(--status-success))]' },
+};
+
+// ─── Phase Pipeline ─────────────────────────────────────
+function PhasePipeline({ activePhase, status }: { activePhase: string; status: RunData['status'] }) {
+  const phases = ['memory', 'planning', 'execute', 'verify', 'reflect', 'evolve', 'complete'];
+  const activeIdx = phases.indexOf(activePhase);
+
+  return (
+    <div className="flex items-center gap-1 px-3 py-2 bg-card border-b border-border overflow-x-auto">
+      {phases.map((phase, i) => {
+        const cfg = phaseConfig[phase];
+        const Icon = cfg.icon;
+        const isActive = phase === activePhase;
+        const isPast = i < activeIdx || status === 'complete';
+        const isFuture = i > activeIdx && status !== 'complete';
+
+        return (
+          <div key={phase} className="flex items-center gap-1">
+            {i > 0 && (
+              <div className={`w-4 h-px ${isPast ? 'bg-[hsl(var(--status-success))]' : isActive ? 'bg-accent' : 'bg-border'}`} />
+            )}
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-medium transition-all duration-300 ${
+              isActive ? `bg-accent/10 border border-accent/30 ${cfg.color}` :
+              isPast ? 'text-[hsl(var(--status-success))] bg-[hsl(var(--status-success))]/5' :
+              'text-muted-foreground/40'
+            }`}>
+              <Icon className={`h-3 w-3 ${isActive ? 'animate-pulse' : ''}`} />
+              {cfg.label}
+              {isPast && !isActive && <CheckCircle2 className="h-2.5 w-2.5" />}
+            </div>
+          </div>
+        );
+      })}
+      {status === 'complete' && (
+        <Badge className="ml-auto text-[8px] h-4 bg-[hsl(var(--status-success))]/10 text-[hsl(var(--status-success))] border-[hsl(var(--status-success))]/20">
+          ✓ Complete
+        </Badge>
+      )}
+    </div>
+  );
+}
+
+// ─── Thought Stream ─────────────────────────────────────
+function ThoughtStream({ thoughts }: { thoughts: ThoughtEntry[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [thoughts.length]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border bg-card/50">
+        <Eye className="h-3.5 w-3.5 text-accent" />
+        <span className="text-[10px] font-bold text-accent">AI Consciousness</span>
+        <Badge variant="outline" className="text-[8px] h-3.5 px-1 ml-auto">{thoughts.length}</Badge>
+      </div>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-2 space-y-1">
+        {thoughts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground/40">
+            <Brain className="h-5 w-5 mb-1" />
+            <span className="text-[9px]">Awaiting thoughts...</span>
+          </div>
+        ) : thoughts.map((t) => {
+          const cfg = phaseConfig[t.phase] || phaseConfig.execute;
+          const Icon = cfg.icon;
+          return (
+            <div key={t.id} className="flex gap-1.5 text-[9px] leading-relaxed animate-in fade-in slide-in-from-left-1 duration-200">
+              <div className="flex-shrink-0 mt-0.5">
+                <Icon className={`h-3 w-3 ${cfg.color}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className={`font-mono font-medium ${cfg.color}`}>{cfg.label}</span>
+                <span className="text-muted-foreground/50 mx-1">•</span>
+                <span className="text-muted-foreground">{t.content}</span>
+              </div>
+              <span className="text-muted-foreground/30 font-mono text-[8px] flex-shrink-0">
+                {new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Context Sidebar ────────────────────────────────────
+function ContextSidebar({ runData }: { runData: RunData }) {
+  const [expandedSection, setExpandedSection] = useState<string | null>('metrics');
+  const toggle = (s: string) => setExpandedSection(prev => prev === s ? null : s);
+
+  const doneCount = runData.tasks.filter(t => t.status === 'done').length;
+  const failedCount = runData.tasks.filter(t => t.status === 'failed').length;
+  const scores = runData.tasks.filter(t => t.verification).map(t => t.verification!.score);
+  const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+
+  return (
+    <div className="flex flex-col h-full border-l border-border bg-card/30">
+      {/* Metrics */}
+      <SidebarSection icon={Gauge} title="Live Metrics" expanded={expandedSection === 'metrics'} onToggle={() => toggle('metrics')}>
+        <div className="grid grid-cols-2 gap-1.5 p-2">
+          <MetricCard label="Tasks" value={`${doneCount}/${runData.tasks.length}`} color={doneCount === runData.tasks.length ? 'success' : 'info'} />
+          <MetricCard label="Failed" value={`${failedCount}`} color={failedCount > 0 ? 'error' : 'success'} />
+          <MetricCard label="Avg Score" value={scores.length > 0 ? `${avgScore}` : '—'} color={avgScore >= 80 ? 'success' : avgScore >= 60 ? 'warning' : 'error'} />
+          <MetricCard label="Tokens" value={runData.totalTokens > 0 ? `${(runData.totalTokens / 1000).toFixed(1)}k` : '—'} color="info" />
+        </div>
+      </SidebarSection>
+
+      {/* Open Questions */}
+      {runData.openQuestions?.length > 0 && (
+        <SidebarSection icon={MessageCircleQuestion} title={`Open Questions (${runData.openQuestions.length})`} expanded={expandedSection === 'questions'} onToggle={() => toggle('questions')} highlight>
+          <div className="p-2 space-y-1.5">
+            {runData.openQuestions.map((q, i) => (
+              <div key={i} className="flex gap-1.5 text-[9px] p-1.5 rounded bg-[hsl(var(--status-warning))]/5 border border-[hsl(var(--status-warning))]/20">
+                <HelpCircle className="h-3 w-3 text-[hsl(var(--status-warning))] flex-shrink-0 mt-0.5" />
+                <span className="text-muted-foreground leading-relaxed">{q}</span>
+              </div>
+            ))}
+          </div>
+        </SidebarSection>
+      )}
+
+      {/* Memory Bank */}
+      <SidebarSection icon={Database} title={`Memory Bank${runData.memoryLoaded ? ` (${runData.memoryLoaded.reflections + runData.memoryLoaded.rules + runData.memoryLoaded.knowledge})` : ''}`} expanded={expandedSection === 'memory'} onToggle={() => toggle('memory')}>
+        <div className="p-2 space-y-2">
+          {runData.memoryDetail ? (
+            <>
+              {runData.memoryDetail.rules.length > 0 && (
+                <div>
+                  <div className="text-[8px] font-bold text-primary uppercase tracking-wider mb-1">Process Rules</div>
+                  {runData.memoryDetail.rules.map((r, i) => (
+                    <div key={i} className="text-[9px] p-1.5 rounded bg-secondary/50 mb-1 border border-border/50">
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <Badge variant="outline" className="text-[7px] h-3 px-1">{r.category}</Badge>
+                        <span className="font-mono text-primary text-[8px]">{(r.confidence * 100).toFixed(0)}%</span>
+                        <span className="text-muted-foreground/40 text-[8px] ml-auto">{r.times_applied}× applied</span>
+                      </div>
+                      <span className="text-muted-foreground">{r.text}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {runData.memoryDetail.reflections.length > 0 && (
+                <div>
+                  <div className="text-[8px] font-bold text-[hsl(var(--status-pending))] uppercase tracking-wider mb-1">Past Reflections</div>
+                  {runData.memoryDetail.reflections.map((r, i) => (
+                    <div key={i} className="text-[9px] text-muted-foreground p-1.5 rounded bg-secondary/50 mb-1 border border-border/50 leading-relaxed">
+                      {r.content}
+                      {r.planning_score && <span className="text-[8px] text-primary ml-1">(plan: {r.planning_score})</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {runData.memoryDetail.knowledge.length > 0 && (
+                <div>
+                  <div className="text-[8px] font-bold text-accent uppercase tracking-wider mb-1">Known Concepts</div>
+                  <div className="flex flex-wrap gap-1">
+                    {runData.memoryDetail.knowledge.slice(0, 20).map((n, i) => (
+                      <span key={i} className="text-[8px] px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/20">{n.label}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-[9px] text-muted-foreground/40 text-center py-3">Loading memory...</div>
+          )}
+        </div>
+      </SidebarSection>
+
+      {/* Planning Reasoning */}
+      {runData.planningReasoning && (
+        <SidebarSection icon={Lightbulb} title="Planning Reasoning" expanded={expandedSection === 'reasoning'} onToggle={() => toggle('reasoning')}>
+          <div className="p-2">
+            <p className="text-[9px] text-muted-foreground leading-relaxed">{runData.planningReasoning}</p>
+            {runData.lessonsIncorporated?.length ? (
+              <div className="mt-2">
+                <div className="text-[8px] font-bold text-[hsl(var(--status-warning))] uppercase tracking-wider mb-1">Lessons Applied</div>
+                {runData.lessonsIncorporated.map((l, i) => (
+                  <div key={i} className="text-[9px] text-muted-foreground flex gap-1 mb-0.5"><span className="text-[hsl(var(--status-warning))]">→</span> {l}</div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </SidebarSection>
+      )}
+
+      {/* Process Rules */}
+      {runData.generatedRules?.length ? (
+        <SidebarSection icon={Scale} title={`New Rules (${runData.generatedRules.length})`} expanded={expandedSection === 'rules'} onToggle={() => toggle('rules')}>
+          <div className="p-2 space-y-1">
+            {runData.generatedRules.map((r, i) => (
+              <div key={i} className="text-[9px] p-1.5 rounded bg-primary/5 border border-primary/20">
+                <div className="flex items-center gap-1 mb-0.5">
+                  <Badge variant="outline" className="text-[7px] h-3 px-1">{r.category}</Badge>
+                  <span className="font-mono text-primary text-[8px]">{(r.confidence * 100).toFixed(0)}%</span>
+                </div>
+                <span className="text-muted-foreground">{r.rule_text}</span>
+              </div>
+            ))}
+          </div>
+        </SidebarSection>
+      ) : null}
+
+      {/* Reflection */}
+      {runData.reflection && (
+        <SidebarSection icon={Sparkles} title="Reflection" expanded={expandedSection === 'reflection'} onToggle={() => toggle('reflection')}>
+          <div className="p-2 space-y-2">
+            <p className="text-[9px] text-muted-foreground leading-relaxed">{runData.reflection.summary}</p>
+            {runData.reflection.process_evaluation && (
+              <div className="flex gap-3 justify-center py-1">
+                <ScoreRing score={runData.reflection.process_evaluation.planning_score} label="Planning" />
+                {runData.reflection.strategy_assessment && <ScoreRing score={runData.reflection.strategy_assessment.effectiveness_score} label="Strategy" />}
+              </div>
+            )}
+            {runData.reflection.detected_patterns?.length ? (
+              <div>
+                <div className="text-[8px] font-bold text-foreground uppercase tracking-wider mb-1">Patterns</div>
+                {runData.reflection.detected_patterns.map((p, i) => (
+                  <div key={i} className="text-[9px] text-muted-foreground flex gap-1 mb-0.5"><span className="text-accent">◆</span> {p}</div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </SidebarSection>
+      )}
+
+      {/* Knowledge Graph */}
+      {runData.knowledgeUpdate && (runData.knowledgeUpdate.nodes_added > 0 || runData.knowledgeUpdate.edges_added > 0) && (
+        <div className="px-3 py-2 border-t border-border flex items-center gap-2 text-[9px] text-accent">
+          <NetworkIcon className="h-3 w-3" />
+          <span>+{runData.knowledgeUpdate.nodes_added} nodes, +{runData.knowledgeUpdate.edges_added} edges</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SidebarSection({ icon: Icon, title, children, expanded, onToggle, highlight }: {
+  icon: any; title: string; children: React.ReactNode; expanded: boolean; onToggle: () => void; highlight?: boolean;
+}) {
+  return (
+    <div className={`border-b border-border ${highlight ? 'bg-[hsl(var(--status-warning))]/3' : ''}`}>
+      <button onClick={onToggle} className="flex items-center gap-1.5 w-full px-3 py-2 text-left hover:bg-secondary/30 transition-colors">
+        {expanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+        <Icon className="h-3 w-3 text-muted-foreground" />
+        <span className="text-[10px] font-medium text-foreground flex-1">{title}</span>
+      </button>
+      {expanded && children}
+    </div>
+  );
+}
+
+function MetricCard({ label, value, color }: { label: string; value: string; color: string }) {
+  const colorClass = color === 'success' ? 'text-[hsl(var(--status-success))]' : color === 'error' ? 'text-destructive' : color === 'warning' ? 'text-[hsl(var(--status-warning))]' : 'text-[hsl(var(--status-info))]';
+  return (
+    <div className="p-1.5 rounded bg-secondary/50 border border-border/50 text-center">
+      <div className={`text-sm font-mono font-bold ${colorClass}`}>{value}</div>
+      <div className="text-[8px] text-muted-foreground uppercase tracking-wider">{label}</div>
+    </div>
+  );
+}
+
+function ScoreRing({ score, size = 32, label }: { score: number; size?: number; label?: string }) {
+  const radius = (size - 4) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 100) * circumference;
+  const color = score >= 80 ? 'hsl(var(--status-success))' : score >= 60 ? 'hsl(var(--status-warning))' : 'hsl(var(--destructive))';
+
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth="2.5" />
+        <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke={color} strokeWidth="2.5"
+          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" className="transition-all duration-700" />
+      </svg>
+      <span className="text-[9px] font-mono font-bold" style={{ color }}>{score}</span>
+      {label && <span className="text-[8px] text-muted-foreground">{label}</span>}
+    </div>
+  );
+}
+
+// ─── Task Status Badge ──────────────────────────────────
 function TaskStatusBadge({ status }: { status: TaskPlan['status'] }) {
   const config: Record<string, { icon: any; label: string; className: string }> = {
     queued: { icon: Clock, label: 'Queued', className: 'bg-muted text-muted-foreground' },
@@ -250,7 +572,6 @@ function TaskStatusBadge({ status }: { status: TaskPlan['status'] }) {
   );
 }
 
-// ─── Detail Level Badge ─────────────────────────────────
 function DetailLevelBadge({ level }: { level: TaskPlan['detailLevel'] }) {
   const config: Record<string, { label: string; icon: string; className: string }> = {
     concise: { label: 'Brief', icon: '⚡', className: 'bg-muted text-muted-foreground' },
@@ -266,64 +587,7 @@ function DetailLevelBadge({ level }: { level: TaskPlan['detailLevel'] }) {
   );
 }
 
-// ─── Complexity Badge ───────────────────────────────────
-function ComplexityBadge({ complexity }: { complexity: RunData['overallComplexity'] }) {
-  const config: Record<string, { label: string; className: string; bars: number }> = {
-    simple: { label: 'Simple', className: 'text-muted-foreground', bars: 1 },
-    moderate: { label: 'Moderate', className: 'text-primary', bars: 2 },
-    complex: { label: 'Complex', className: 'text-accent', bars: 3 },
-    'research-grade': { label: 'Research-Grade', className: 'text-[hsl(var(--status-warning))]', bars: 4 },
-  };
-  const c = config[complexity] || config.moderate;
-  return (
-    <span className={`inline-flex items-center gap-1 text-[9px] font-medium ${c.className}`}>
-      <span className="flex gap-0.5">
-        {Array.from({ length: 4 }, (_, i) => (
-          <span key={i} className={`w-1 rounded-full ${i < c.bars ? 'bg-current' : 'bg-muted'}`} style={{ height: `${6 + i * 2}px` }} />
-        ))}
-      </span>
-      {c.label}
-    </span>
-  );
-}
-
-// ─── Score Ring ─────────────────────────────────────────
-function ScoreRing({ score, size = 28, label }: { score: number; size?: number; label?: string }) {
-  const radius = (size - 4) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (score / 100) * circumference;
-  const color = score >= 80 ? 'hsl(var(--status-success))' : score >= 60 ? 'hsl(var(--status-warning))' : 'hsl(var(--destructive))';
-
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth="2.5" />
-        <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke={color} strokeWidth="2.5"
-          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" className="transition-all duration-700" />
-      </svg>
-      <span className="text-[9px] font-mono font-bold" style={{ color }}>{score}</span>
-      {label && <span className="text-[8px] text-muted-foreground">{label}</span>}
-    </div>
-  );
-}
-
-// ─── Memory Indicator ───────────────────────────────────
-function MemoryIndicator({ memory, lessons }: { memory?: MemoryLoaded; lessons?: string[] }) {
-  if (!memory || (memory.reflections === 0 && memory.rules === 0 && memory.knowledge === 0)) return null;
-  const total = memory.reflections + memory.rules + memory.knowledge;
-  return (
-    <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-accent/5 border border-accent/20 text-[9px]">
-      <Brain className="h-3 w-3 text-accent flex-shrink-0" />
-      <span className="text-accent font-medium">Loaded {total} memories</span>
-      <span className="text-muted-foreground">({memory.reflections} reflections, {memory.rules} rules, {memory.knowledge} concepts)</span>
-      {lessons && lessons.length > 0 && (
-        <span className="text-muted-foreground ml-1">• Applied {lessons.length} lesson{lessons.length > 1 ? 's' : ''}</span>
-      )}
-    </div>
-  );
-}
-
-// ─── Task Card ──────────────────────────────────────────
+// ─── Task Card (Enhanced) ───────────────────────────────
 function TaskCard({ task, isExpanded, onToggle }: { task: TaskPlan; isExpanded: boolean; onToggle: () => void }) {
   const borderClass = task.status === 'running' ? 'border-accent/40 shadow-[0_0_8px_hsl(var(--accent)/0.15)]' :
     task.status === 'retrying' ? 'border-[hsl(var(--status-warning))]/40 shadow-[0_0_8px_hsl(var(--status-warning)/0.15)]' :
@@ -333,12 +597,12 @@ function TaskCard({ task, isExpanded, onToggle }: { task: TaskPlan; isExpanded: 
 
   return (
     <div className={`rounded-lg border bg-card transition-all duration-300 ${borderClass}`}>
-      <button onClick={onToggle} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-secondary/50 transition-colors rounded-lg">
-        {task.output ? (
+      <button onClick={onToggle} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-secondary/50 transition-colors rounded-lg">
+        {task.output || task.reasoning ? (
           isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" /> : <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
         ) : <div className="w-3" />}
         <TaskStatusBadge status={task.status} />
-        <span className="text-xs font-medium text-foreground flex-1 truncate">{task.title}</span>
+        <span className="text-[11px] font-medium text-foreground flex-1 truncate">{task.title}</span>
         {task.retried && <Badge variant="outline" className="text-[8px] h-3.5 px-1 border-[hsl(var(--status-warning))]/40 text-[hsl(var(--status-warning))]">⟳ Retried</Badge>}
         <DetailLevelBadge level={task.detailLevel} />
         {task.verification && (
@@ -349,8 +613,38 @@ function TaskCard({ task, isExpanded, onToggle }: { task: TaskPlan; isExpanded: 
         <span className="text-[9px] text-muted-foreground font-mono">P{task.priority}</span>
       </button>
 
-      {isExpanded && task.output && (
+      {isExpanded && (
         <div className="px-3 pb-3 border-t border-border/50 mt-0">
+          {/* Task reasoning */}
+          {task.reasoning && (
+            <div className="mt-2 p-2 rounded-md bg-primary/5 border border-primary/15 text-[9px]">
+              <div className="flex items-center gap-1 font-semibold text-primary mb-0.5">
+                <Lightbulb className="h-3 w-3" /> Task Rationale
+              </div>
+              <p className="text-muted-foreground leading-relaxed">{task.reasoning}</p>
+            </div>
+          )}
+
+          {/* Acceptance Criteria */}
+          {task.acceptanceCriteria?.length ? (
+            <div className="mt-2 p-2 rounded-md bg-secondary/50 border border-border/50 text-[9px]">
+              <div className="flex items-center gap-1 font-semibold text-muted-foreground mb-1">
+                <Target className="h-3 w-3" /> Acceptance Criteria
+              </div>
+              {task.acceptanceCriteria.map((c, j) => {
+                const result = task.verification?.criteria_results?.find(cr => cr.criterion === c);
+                return (
+                  <div key={j} className="flex items-start gap-1.5 mt-0.5">
+                    {result ? (
+                      result.met ? <CheckCircle2 className="h-2.5 w-2.5 text-[hsl(var(--status-success))] mt-0.5 flex-shrink-0" /> : <XCircle className="h-2.5 w-2.5 text-destructive mt-0.5 flex-shrink-0" />
+                    ) : <div className="w-2.5 h-2.5 rounded-full border border-muted-foreground/30 mt-0.5 flex-shrink-0" />}
+                    <span className="text-muted-foreground">{c}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+
           {/* Retry diagnosis */}
           {task.retryDiagnosis && (
             <div className="mt-2 p-2 rounded-md bg-[hsl(var(--status-warning))]/5 border border-[hsl(var(--status-warning))]/20 text-[10px]">
@@ -361,12 +655,16 @@ function TaskCard({ task, isExpanded, onToggle }: { task: TaskPlan; isExpanded: 
             </div>
           )}
 
-          <div className="mt-2.5 max-h-[400px] overflow-y-auto pr-1">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-              {task.output}
-            </ReactMarkdown>
-          </div>
+          {/* Task output */}
+          {task.output && (
+            <div className="mt-2.5 max-h-[500px] overflow-y-auto pr-1">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                {task.output}
+              </ReactMarkdown>
+            </div>
+          )}
 
+          {/* Verification result */}
           {task.verification && (
             <div className={`mt-3 p-2.5 rounded-md text-[10px] border ${
               task.verification.passed ? 'bg-[hsl(var(--status-success))]/5 border-[hsl(var(--status-success))]/20' : 'bg-destructive/5 border-destructive/20'
@@ -391,6 +689,94 @@ function TaskCard({ task, isExpanded, onToggle }: { task: TaskPlan; isExpanded: 
   );
 }
 
+// ─── Mission Control (full run view) ────────────────────
+function MissionControl({ runData }: { runData: RunData }) {
+  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    const running = runData.tasks.findIndex(t => t.status === 'running' || t.status === 'verifying' || t.status === 'retrying');
+    if (running >= 0) setExpandedTasks(prev => new Set([...prev, running]));
+  }, [runData.tasks]);
+
+  const toggleTask = (i: number) => {
+    setExpandedTasks(prev => { const next = new Set(prev); if (next.has(i)) next.delete(i); else next.add(i); return next; });
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Phase Pipeline */}
+      <PhasePipeline activePhase={runData.activePhase} status={runData.status} />
+
+      {/* Goal bar */}
+      <div className="px-3 py-2 border-b border-border bg-card/50 flex items-center gap-2">
+        <Brain className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+        <span className="text-[11px] font-medium text-foreground truncate flex-1">{runData.goal}</span>
+        <ComplexityBadge complexity={runData.overallComplexity} />
+        {runData.totalTokens > 0 && <span className="text-[9px] text-muted-foreground font-mono">{runData.totalTokens.toLocaleString()} tok</span>}
+        <Badge variant="outline" className="text-[8px] h-3.5 px-1 font-mono">{runData.runId.slice(0, 12)}</Badge>
+      </div>
+
+      {/* Three-column layout */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left: Thought Stream */}
+        <div className="w-64 flex-shrink-0 border-r border-border overflow-hidden">
+          <ThoughtStream thoughts={runData.thoughts} />
+        </div>
+
+        {/* Center: Tasks */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {runData.approach && (
+            <div className="text-[10px] text-muted-foreground italic px-1 mb-1">
+              <span className="text-foreground font-medium">Approach:</span> {runData.approach}
+            </div>
+          )}
+
+          {runData.tasks.length === 0 && runData.status === 'planning' && (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm p-8 justify-center">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span>Planning tasks...</span>
+            </div>
+          )}
+
+          {runData.tasks.map((task, i) => (
+            <TaskCard key={task.id || i} task={task} isExpanded={expandedTasks.has(i)} onToggle={() => toggleTask(i)} />
+          ))}
+
+          {/* Deep Reflection Panel */}
+          {runData.reflection && (
+            <DeepReflectionPanel reflection={runData.reflection} knowledgeUpdate={runData.knowledgeUpdate} generatedRules={runData.generatedRules} />
+          )}
+        </div>
+
+        {/* Right: Context Sidebar */}
+        <div className="w-56 flex-shrink-0 overflow-y-auto">
+          <ContextSidebar runData={runData} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ComplexityBadge({ complexity }: { complexity: RunData['overallComplexity'] }) {
+  const config: Record<string, { label: string; className: string; bars: number }> = {
+    simple: { label: 'Simple', className: 'text-muted-foreground', bars: 1 },
+    moderate: { label: 'Moderate', className: 'text-primary', bars: 2 },
+    complex: { label: 'Complex', className: 'text-accent', bars: 3 },
+    'research-grade': { label: 'Research', className: 'text-[hsl(var(--status-warning))]', bars: 4 },
+  };
+  const c = config[complexity] || config.moderate;
+  return (
+    <span className={`inline-flex items-center gap-1 text-[9px] font-medium ${c.className}`}>
+      <span className="flex gap-0.5">
+        {Array.from({ length: 4 }, (_, i) => (
+          <span key={i} className={`w-1 rounded-full ${i < c.bars ? 'bg-current' : 'bg-muted'}`} style={{ height: `${6 + i * 2}px` }} />
+        ))}
+      </span>
+      {c.label}
+    </span>
+  );
+}
+
 // ─── Deep Reflection Panel ──────────────────────────────
 function DeepReflectionPanel({ reflection, knowledgeUpdate, generatedRules }: { reflection: ReflectionData; knowledgeUpdate: RunData['knowledgeUpdate']; generatedRules?: ProcessRule[] }) {
   const pe = reflection.process_evaluation;
@@ -401,9 +787,20 @@ function DeepReflectionPanel({ reflection, knowledgeUpdate, generatedRules }: { 
       <div className="flex items-center gap-1.5 text-[11px] font-bold text-accent">
         <Sparkles className="h-3.5 w-3.5" /> Deep Self-Reflection
       </div>
+
+      {/* Internal Monologue */}
+      {reflection.internal_monologue && (
+        <div className="p-2.5 rounded-md bg-[hsl(var(--terminal-bg))] border border-border/50 text-[9px] font-mono text-[hsl(var(--terminal-fg))] leading-relaxed max-h-48 overflow-y-auto">
+          <div className="flex items-center gap-1 text-[8px] text-muted-foreground mb-1.5 uppercase tracking-wider">
+            <ScanEye className="h-3 w-3" /> Internal Monologue
+          </div>
+          {reflection.internal_monologue}
+        </div>
+      )}
+
       <p className="text-xs text-secondary-foreground leading-relaxed">{reflection.summary}</p>
 
-      {/* Process Evaluation Scores */}
+      {/* Scores */}
       {(pe || sa) && (
         <div className="flex items-center gap-4 p-2.5 rounded-md bg-card border border-border">
           {pe && <ScoreRing score={pe.planning_score} label="Planning" />}
@@ -427,7 +824,7 @@ function DeepReflectionPanel({ reflection, knowledgeUpdate, generatedRules }: { 
         </div>
       )}
 
-      {/* Strategy Assessment */}
+      {/* Strategy */}
       {sa && (
         <div className="space-y-1.5">
           {sa.what_worked?.length > 0 && (
@@ -450,7 +847,7 @@ function DeepReflectionPanel({ reflection, knowledgeUpdate, generatedRules }: { 
         </div>
       )}
 
-      {/* Detected Patterns */}
+      {/* Patterns */}
       {reflection.detected_patterns?.length ? (
         <div>
           <div className="text-[10px] font-semibold text-foreground mb-0.5 flex items-center gap-1"><Activity className="h-3 w-3" /> Detected Patterns</div>
@@ -463,14 +860,14 @@ function DeepReflectionPanel({ reflection, knowledgeUpdate, generatedRules }: { 
       {/* Lessons */}
       {reflection.lessons?.length > 0 && (
         <div>
-          <div className="text-[10px] font-semibold text-foreground mb-0.5 flex items-center gap-1"><BookOpen className="h-3 w-3" /> Lessons Learned</div>
+          <div className="text-[10px] font-semibold text-foreground mb-0.5 flex items-center gap-1"><BookOpen className="h-3 w-3" /> Lessons</div>
           <ul className="space-y-0.5">
             {reflection.lessons.map((l, i) => <li key={i} className="text-[10px] text-muted-foreground flex items-start gap-1.5"><span className="text-accent">•</span> {l}</li>)}
           </ul>
         </div>
       )}
 
-      {/* Generated Process Rules */}
+      {/* Generated Rules */}
       {(generatedRules || reflection.new_process_rules)?.length ? (
         <div className="p-2 rounded-md bg-primary/5 border border-primary/20">
           <div className="text-[10px] font-semibold text-primary mb-1 flex items-center gap-1"><Scale className="h-3 w-3" /> New Process Rules</div>
@@ -486,7 +883,7 @@ function DeepReflectionPanel({ reflection, knowledgeUpdate, generatedRules }: { 
         </div>
       ) : null}
 
-      {/* Self-Test Proposals */}
+      {/* Self-Tests */}
       {reflection.self_test_proposals?.length ? (
         <div>
           <div className="text-[10px] font-semibold text-foreground mb-0.5 flex items-center gap-1"><FlaskConical className="h-3 w-3" /> Self-Test Proposals</div>
@@ -496,17 +893,7 @@ function DeepReflectionPanel({ reflection, knowledgeUpdate, generatedRules }: { 
         </div>
       ) : null}
 
-      {/* Improvements */}
-      {reflection.improvements?.length ? (
-        <div>
-          <div className="text-[10px] font-semibold text-foreground mb-0.5 flex items-center gap-1"><Zap className="h-3 w-3" /> Process Improvements</div>
-          <ul className="space-y-0.5">
-            {reflection.improvements.map((imp, i) => <li key={i} className="text-[10px] text-muted-foreground flex items-start gap-1.5"><span className="text-[hsl(var(--status-warning))]">↑</span> {imp}</li>)}
-          </ul>
-        </div>
-      ) : null}
-
-      {/* Knowledge Graph */}
+      {/* Knowledge */}
       {knowledgeUpdate && (knowledgeUpdate.nodes_added > 0 || knowledgeUpdate.edges_added > 0) && (
         <div className="flex items-center gap-3 pt-1 border-t border-accent/20 text-[9px] text-accent">
           <span className="flex items-center gap-1"><Database className="h-3 w-3" /> +{knowledgeUpdate.nodes_added} nodes</span>
@@ -521,114 +908,6 @@ function DeepReflectionPanel({ reflection, knowledgeUpdate, generatedRules }: { 
             </span>
           ))}
         </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Run Visualization ──────────────────────────────────
-function RunVisualization({ runData }: { runData: RunData }) {
-  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
-
-  useEffect(() => {
-    const running = runData.tasks.findIndex(t => t.status === 'running' || t.status === 'verifying' || t.status === 'retrying');
-    if (running >= 0) setExpandedTasks(prev => new Set([...prev, running]));
-  }, [runData.tasks]);
-
-  const toggleTask = (i: number) => {
-    setExpandedTasks(prev => { const next = new Set(prev); if (next.has(i)) next.delete(i); else next.add(i); return next; });
-  };
-
-  const doneCount = runData.tasks.filter(t => t.status === 'done').length;
-  const failedCount = runData.tasks.filter(t => t.status === 'failed').length;
-  const totalCount = runData.tasks.length;
-  const scores = runData.tasks.filter(t => t.verification).map(t => t.verification!.score);
-  const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-  const retriedCount = runData.tasks.filter(t => t.retried).length;
-
-  return (
-    <div className="space-y-3">
-      {/* Run header */}
-      <div className="flex items-start gap-3">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-          runData.status === 'complete' ? 'bg-[hsl(var(--status-success))]/20' :
-          runData.status === 'error' ? 'bg-destructive/20' : 'bg-primary/20 pulse-glow'
-        }`}>
-          <Brain className={`h-4 w-4 ${
-            runData.status === 'complete' ? 'text-[hsl(var(--status-success))]' :
-            runData.status === 'error' ? 'text-destructive' : 'text-primary'
-          }`} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-bold text-foreground">AIM-OS</span>
-            <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-mono">{runData.runId.slice(0, 12)}</Badge>
-            <ComplexityBadge complexity={runData.overallComplexity} />
-            {runData.status === 'complete' && (
-              <Badge className="text-[9px] h-4 px-1.5 bg-[hsl(var(--status-success))]/20 text-[hsl(var(--status-success))] border-[hsl(var(--status-success))]/30">
-                ✅ {doneCount}/{totalCount} • avg {avgScore}/100
-                {retriedCount > 0 && ` • ${retriedCount} retried`}
-              </Badge>
-            )}
-            {runData.totalTokens > 0 && (
-              <span className="text-[9px] text-muted-foreground font-mono">{runData.totalTokens.toLocaleString()} tokens</span>
-            )}
-          </div>
-          <p className="text-[11px] text-muted-foreground mt-0.5">{runData.goal}</p>
-          {runData.approach && <p className="text-[10px] text-muted-foreground/70 mt-0.5 italic">{runData.approach}</p>}
-        </div>
-      </div>
-
-      {/* Memory indicator */}
-      <MemoryIndicator memory={runData.memoryLoaded} lessons={runData.lessonsIncorporated} />
-
-      {/* Progress bar */}
-      <div className="flex items-center gap-2">
-        <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-700 ease-out"
-            style={{
-              width: `${((doneCount + failedCount) / Math.max(totalCount, 1)) * 100}%`,
-              background: failedCount > 0
-                ? `linear-gradient(90deg, hsl(var(--status-success)) ${(doneCount/(doneCount+failedCount))*100}%, hsl(var(--destructive)) ${(doneCount/(doneCount+failedCount))*100}%)`
-                : 'hsl(var(--status-success))'
-            }} />
-        </div>
-        <span className="text-[9px] text-muted-foreground font-mono">{doneCount + failedCount}/{totalCount}</span>
-      </div>
-
-      {/* Pipeline status */}
-      <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
-        <Brain className={`h-3 w-3 ${runData.memoryLoaded && (runData.memoryLoaded.reflections + runData.memoryLoaded.rules) > 0 ? 'text-accent' : 'text-muted-foreground'}`} />
-        <span>Memory</span>
-        <ArrowRight className="h-2 w-2" />
-        <Target className={`h-3 w-3 ${runData.status === 'planning' ? 'text-primary animate-pulse' : runData.tasks.length > 0 ? 'text-[hsl(var(--status-success))]' : ''}`} />
-        <span>Plan</span>
-        <ArrowRight className="h-2 w-2" />
-        <Zap className={`h-3 w-3 ${runData.status === 'executing' ? 'text-accent animate-pulse' : doneCount > 0 ? 'text-[hsl(var(--status-success))]' : ''}`} />
-        <span>Execute</span>
-        <ArrowRight className="h-2 w-2" />
-        <Shield className={`h-3 w-3 ${runData.tasks.some(t => t.status === 'verifying') ? 'text-[hsl(var(--status-warning))] animate-pulse' : scores.length > 0 ? 'text-[hsl(var(--status-success))]' : ''}`} />
-        <span>Verify</span>
-        {retriedCount > 0 && <>
-          <ArrowRight className="h-2 w-2" />
-          <RefreshCw className="h-3 w-3 text-[hsl(var(--status-warning))]" />
-          <span>Retry</span>
-        </>}
-        <ArrowRight className="h-2 w-2" />
-        <Sparkles className={`h-3 w-3 ${runData.status === 'reflecting' ? 'text-accent animate-pulse' : runData.reflection ? 'text-[hsl(var(--status-success))]' : ''}`} />
-        <span>Reflect</span>
-      </div>
-
-      {/* Task cards */}
-      <div className="space-y-1.5">
-        {runData.tasks.map((task, i) => (
-          <TaskCard key={task.id || i} task={task} isExpanded={expandedTasks.has(i)} onToggle={() => toggleTask(i)} />
-        ))}
-      </div>
-
-      {/* Deep Reflection */}
-      {runData.reflection && (
-        <DeepReflectionPanel reflection={runData.reflection} knowledgeUpdate={runData.knowledgeUpdate} generatedRules={runData.generatedRules} />
       )}
     </div>
   );
@@ -651,14 +930,19 @@ export function AIMChat() {
   const [isRunning, setIsRunning] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Get the active run (last assistant message with runData)
+  const activeRun = messages.findLast(m => m.role === 'assistant' && m.runData)?.runData;
+  const showMissionControl = activeRun && activeRun.status !== 'complete';
+  const lastCompleteRun = messages.findLast(m => m.role === 'assistant' && m.runData?.status === 'complete')?.runData;
+
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && !showMissionControl) {
       const el = scrollRef.current;
       if (el.scrollHeight - el.scrollTop - el.clientHeight < 200) {
         el.scrollTop = el.scrollHeight;
       }
     }
-  }, [messages]);
+  }, [messages, showMissionControl]);
 
   const executeGoal = useCallback(async (text: string) => {
     if (!text.trim() || isRunning) return;
@@ -667,7 +951,11 @@ export function AIMChat() {
     const assistantId = crypto.randomUUID();
     const assistantMsg: ChatMessage = {
       id: assistantId, role: 'assistant', content: '', timestamp: Date.now(),
-      runData: { runId: '', goal: text.trim(), approach: '', overallComplexity: 'moderate', tasks: [], reflection: null, knowledgeUpdate: null, status: 'planning', totalTokens: 0 },
+      runData: {
+        runId: '', goal: text.trim(), approach: '', planningReasoning: '', openQuestions: [],
+        overallComplexity: 'moderate', tasks: [], thoughts: [], reflection: null,
+        knowledgeUpdate: null, status: 'planning', totalTokens: 0, activePhase: 'memory',
+      },
     };
 
     setMessages(prev => [...prev, userMsg, assistantMsg]);
@@ -682,34 +970,51 @@ export function AIMChat() {
       setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, runData: updater(m.runData!) } : m));
     };
 
+    const addThought = (phase: ThoughtEntry['phase'], content: string) => {
+      updateRun(rd => ({
+        ...rd,
+        activePhase: phase,
+        thoughts: [...rd.thoughts, { id: crypto.randomUUID(), timestamp: Date.now(), phase, content }],
+      }));
+    };
+
     try {
       await streamAIMOS({
         conversationHistory,
+        onThinking: (phase, content) => addThought(phase as ThoughtEntry['phase'], content),
+        onMemoryDetail: (data) => updateRun(rd => ({ ...rd, memoryDetail: data })),
+        onOpenQuestions: (questions) => updateRun(rd => ({ ...rd, openQuestions: questions })),
         onPlan: (data) => {
           updateRun(rd => ({
             ...rd,
             runId: data.run_id || rd.runId,
             goal: data.goal,
             approach: data.approach || '',
+            planningReasoning: data.planning_reasoning || '',
+            openQuestions: data.open_questions || rd.openQuestions,
             overallComplexity: data.overall_complexity || 'moderate',
             memoryLoaded: data.memory_loaded,
             lessonsIncorporated: data.lessons_incorporated || [],
+            activePhase: 'execute',
             tasks: data.tasks.map((t: any) => ({
               id: t.id, index: t.index, title: t.title, status: 'queued' as const,
               priority: t.priority, criteriaCount: t.criteria_count,
               detailLevel: t.detail_level || 'standard',
               expectedSections: t.expected_sections || 4,
+              reasoning: t.reasoning || '',
+              depthGuidance: t.depth_guidance || '',
+              acceptanceCriteria: t.acceptance_criteria || [],
               output: '', verification: undefined,
             })),
             status: 'executing',
           }));
-          emitSystemEvent('plan', `Plan created: ${data.tasks.length} tasks (${data.memory_loaded?.rules || 0} rules loaded)`, { task_count: data.tasks.length });
+          emitSystemEvent('plan', `Plan: ${data.tasks.length} tasks (${data.overall_complexity})`, { task_count: data.tasks.length });
         },
         onTaskStart: (idx, taskId, title) => {
           updateRun(rd => {
             const tasks = [...rd.tasks];
             if (tasks[idx]) tasks[idx] = { ...tasks[idx], id: taskId, status: 'running' };
-            return { ...rd, tasks };
+            return { ...rd, tasks, activePhase: 'execute' };
           });
           emitSystemEvent('task_start', `▶ Task ${idx + 1}: ${title}`);
         },
@@ -724,7 +1029,7 @@ export function AIMChat() {
           updateRun(rd => {
             const tasks = [...rd.tasks];
             if (tasks[idx]) tasks[idx] = { ...tasks[idx], status: 'verifying' };
-            return { ...rd, tasks };
+            return { ...rd, tasks, activePhase: 'verify' };
           });
           emitSystemEvent('verify', `🛡️ Verifying task ${idx + 1}...`);
         },
@@ -734,7 +1039,7 @@ export function AIMChat() {
             if (tasks[idx]) tasks[idx] = { ...tasks[idx], verification };
             return { ...rd, tasks };
           });
-          emitSystemEvent('verify', `${verification.passed ? '✅' : '❌'} Task ${idx + 1}: ${verification.score}/100`, { score: verification.score });
+          emitSystemEvent('verify', `${verification.passed ? '✅' : '❌'} Task ${idx + 1}: ${verification.score}/100`);
         },
         onTaskComplete: (idx, status) => {
           updateRun(rd => {
@@ -756,9 +1061,9 @@ export function AIMChat() {
           updateRun(rd => {
             const tasks = [...rd.tasks];
             if (tasks[idx]) tasks[idx] = { ...tasks[idx], status: 'retrying', output: '', retried: true };
-            return { ...rd, tasks };
+            return { ...rd, tasks, activePhase: 'retry' };
           });
-          emitSystemEvent('retry', `🔄 Retrying task ${idx + 1}: ${reason.slice(0, 60)}...`);
+          emitSystemEvent('retry', `🔄 Retrying task ${idx + 1}`);
         },
         onTaskRetryDiagnosis: (idx, diagnosis) => {
           updateRun(rd => {
@@ -768,28 +1073,26 @@ export function AIMChat() {
           });
         },
         onReflectionStart: () => {
-          updateRun(rd => ({ ...rd, status: 'reflecting' }));
+          updateRun(rd => ({ ...rd, status: 'reflecting', activePhase: 'reflect' }));
           emitSystemEvent('reflect', '🔮 Deep self-reflecting...');
         },
         onReflection: (data) => {
           updateRun(rd => ({ ...rd, reflection: data }));
-          emitSystemEvent('reflect', `Reflection: planning=${data.process_evaluation?.planning_score}/100, strategy=${data.strategy_assessment?.effectiveness_score}/100`);
+          emitSystemEvent('reflect', `Planning: ${data.process_evaluation?.planning_score}/100, Strategy: ${data.strategy_assessment?.effectiveness_score}/100`);
         },
         onKnowledgeUpdate: (data) => {
           updateRun(rd => ({ ...rd, knowledgeUpdate: data }));
-          emitSystemEvent('knowledge', `Knowledge: +${data.nodes_added} nodes, +${data.edges_added} edges`);
+          emitSystemEvent('knowledge', `+${data.nodes_added} nodes, +${data.edges_added} edges`);
         },
-        onProcessEvaluation: () => {
-          // Already handled in onReflection
-        },
+        onProcessEvaluation: () => {},
         onRulesGenerated: (data) => {
-          updateRun(rd => ({ ...rd, generatedRules: data.rules }));
+          updateRun(rd => ({ ...rd, generatedRules: data.rules, activePhase: 'evolve' }));
           emitSystemEvent('reflect', `Generated ${data.rules?.length || 0} new process rules`);
         },
         onRunComplete: (data) => {
-          updateRun(rd => ({ ...rd, status: 'complete', totalTokens: data.total_tokens }));
+          updateRun(rd => ({ ...rd, status: 'complete', totalTokens: data.total_tokens, activePhase: 'complete' }));
           setIsRunning(false);
-          emitSystemEvent('complete', `Run complete: ${data.task_count} tasks, ${data.total_tokens?.toLocaleString()} tokens`, data);
+          emitSystemEvent('complete', `Run complete: ${data.task_count} tasks, ${data.total_tokens?.toLocaleString()} tokens`);
         },
         onError: (error) => {
           toast.error(error);
@@ -809,6 +1112,22 @@ export function AIMChat() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); executeGoal(input); }
   };
 
+  // ─── ACTIVE RUN: Mission Control ──────────────────────
+  if (showMissionControl && activeRun) {
+    return (
+      <div className="flex flex-col h-full bg-background">
+        <MissionControl runData={activeRun} />
+        <div className="border-t border-border p-2 bg-card/80 backdrop-blur-sm">
+          <div className="flex items-center gap-2 max-w-4xl mx-auto text-[10px] text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin text-primary" />
+            <span>AIM-OS is executing... watching AI consciousness in real-time</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── CHAT VIEW (idle or completed runs) ───────────────
   return (
     <div className="flex flex-col h-full bg-background">
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
@@ -823,20 +1142,21 @@ export function AIMChat() {
                 <p className="text-xs text-muted-foreground mt-1">Autonomous Intelligence Machine • Self-Evolving Operating System</p>
               </div>
               <p className="text-sm text-muted-foreground max-w-lg leading-relaxed">
-                Give me any goal. I'll load memory from past runs, plan with learned process rules, 
+                Give me any goal. I'll load memory from past runs, plan with learned process rules,
                 execute with calibrated detail, verify & retry failures, then deeply reflect —
-                evaluating my own planning, generating new rules, and evolving with each run.
+                showing you every thought and decision along the way.
               </p>
             </div>
 
             <div className="flex items-center gap-2 text-xs flex-wrap justify-center">
               {[
-                { icon: Brain, label: 'Memory', desc: 'Load past lessons' },
+                { icon: Database, label: 'Memory', desc: 'Load past lessons' },
                 { icon: Target, label: 'Plan', desc: 'Decompose + calibrate' },
                 { icon: Zap, label: 'Execute', desc: 'AI runs each task' },
                 { icon: Shield, label: 'Verify', desc: 'Check criteria' },
                 { icon: RefreshCw, label: 'Retry', desc: 'Diagnose & fix' },
                 { icon: Sparkles, label: 'Reflect', desc: 'Meta-cognition' },
+                { icon: TrendingUp, label: 'Evolve', desc: 'Generate rules' },
               ].map((step, i) => (
                 <div key={i} className="flex items-center gap-2">
                   {i > 0 && <ArrowRight className="h-3 w-3 text-border" />}
@@ -860,17 +1180,9 @@ export function AIMChat() {
                 </button>
               ))}
             </div>
-
-            <div className="flex items-center gap-3 text-[9px] text-muted-foreground flex-wrap justify-center">
-              <span className="flex items-center gap-1"><Database className="h-3 w-3" /> Persisted</span>
-              <span className="flex items-center gap-1"><NetworkIcon className="h-3 w-3" /> Knowledge Graph</span>
-              <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" /> AI Journal</span>
-              <span className="flex items-center gap-1"><Scale className="h-3 w-3" /> Process Rules</span>
-              <span className="flex items-center gap-1"><RefreshCw className="h-3 w-3" /> Auto-Retry</span>
-            </div>
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
+          <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
             {messages.map((msg) => (
               <div key={msg.id}>
                 {msg.role === 'user' ? (
@@ -885,16 +1197,16 @@ export function AIMChat() {
                       </div>
                     </div>
                   </div>
+                ) : msg.runData?.status === 'complete' ? (
+                  <CompletedRunCard runData={msg.runData} />
                 ) : msg.runData ? (
                   <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-                    <RunVisualization runData={msg.runData} />
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <span>Initializing AIM-OS...</span>
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm p-4">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    <span>Initializing AIM-OS...</span>
-                  </div>
-                )}
+                ) : null}
               </div>
             ))}
           </div>
@@ -926,6 +1238,77 @@ export function AIMChat() {
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Completed Run Card ─────────────────────────────────
+function CompletedRunCard({ runData }: { runData: RunData }) {
+  const [expanded, setExpanded] = useState(false);
+  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+  const doneCount = runData.tasks.filter(t => t.status === 'done').length;
+  const scores = runData.tasks.filter(t => t.verification).map(t => t.verification!.score);
+  const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+
+  const toggleTask = (i: number) => {
+    setExpandedTasks(prev => { const next = new Set(prev); if (next.has(i)) next.delete(i); else next.add(i); return next; });
+  };
+
+  return (
+    <div className="bg-card border border-[hsl(var(--status-success))]/20 rounded-xl shadow-sm overflow-hidden">
+      {/* Summary bar */}
+      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary/30 transition-colors">
+        <div className="w-8 h-8 rounded-lg bg-[hsl(var(--status-success))]/10 flex items-center justify-center flex-shrink-0">
+          <Brain className="h-4 w-4 text-[hsl(var(--status-success))]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold text-foreground">AIM-OS</span>
+            <ComplexityBadge complexity={runData.overallComplexity} />
+            <Badge className="text-[9px] h-4 px-1.5 bg-[hsl(var(--status-success))]/10 text-[hsl(var(--status-success))] border-[hsl(var(--status-success))]/20">
+              ✅ {doneCount}/{runData.tasks.length} • avg {avgScore}/100
+            </Badge>
+            {runData.totalTokens > 0 && <span className="text-[9px] text-muted-foreground font-mono">{runData.totalTokens.toLocaleString()} tok</span>}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{runData.goal}</p>
+        </div>
+        {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 space-y-3 border-t border-border/50">
+          {/* Thoughts summary */}
+          {runData.thoughts.length > 0 && (
+            <details className="mt-3">
+              <summary className="text-[10px] font-medium text-accent cursor-pointer flex items-center gap-1">
+                <Eye className="h-3 w-3" /> View AI Consciousness ({runData.thoughts.length} thoughts)
+              </summary>
+              <div className="mt-2 max-h-48 overflow-y-auto space-y-0.5 p-2 rounded-md bg-[hsl(var(--terminal-bg))] border border-border/50">
+                {runData.thoughts.map(t => {
+                  const cfg = phaseConfig[t.phase] || phaseConfig.execute;
+                  return (
+                    <div key={t.id} className="text-[8px] font-mono text-[hsl(var(--terminal-fg))]">
+                      <span className={cfg.color}>[{cfg.label}]</span> {t.content}
+                    </div>
+                  );
+                })}
+              </div>
+            </details>
+          )}
+
+          {/* Tasks */}
+          <div className="space-y-1.5 mt-2">
+            {runData.tasks.map((task, i) => (
+              <TaskCard key={task.id || i} task={task} isExpanded={expandedTasks.has(i)} onToggle={() => toggleTask(i)} />
+            ))}
+          </div>
+
+          {/* Reflection */}
+          {runData.reflection && (
+            <DeepReflectionPanel reflection={runData.reflection} knowledgeUpdate={runData.knowledgeUpdate} generatedRules={runData.generatedRules} />
+          )}
+        </div>
+      )}
     </div>
   );
 }
