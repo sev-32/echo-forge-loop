@@ -149,7 +149,7 @@ export class VerifiableIntelligenceFramework {
         output_tokens: params.output_tokens ?? 0,
         latency_ms: params.latency_ms ?? null,
         metadata: params.metadata ?? {},
-      })
+      } as any)
       .select()
       .single();
 
