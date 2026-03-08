@@ -158,7 +158,10 @@ export class AIOrchestrationKernel {
     // Handle new tasks from AI
     if (stepResult.new_tasks?.length) {
       for (const nt of stepResult.new_tasks) {
-        taskQueue.createTask(this.state.run_id, nt.title, nt.prompt, { priority: nt.priority || 50 });
+        const newTask = taskQueue.createTask(this.state.run_id, nt.title, nt.prompt, { priority: nt.priority || 50 });
+        if (this.config.persistToCloud) {
+          await persistence.persistTask({ run_id: this.state.run_id, title: nt.title, prompt: nt.prompt, priority: nt.priority || 50 });
+        }
         this.emitActivity('task_created', `AI spawned task: ${nt.title}`);
       }
     }
