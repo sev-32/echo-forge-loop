@@ -10,7 +10,7 @@ import { generateId } from '@/lib/utils';
 export interface AgentConfig {
   id: string;
   name: string;
-  type: 'auditor' | 'improver' | 'monitor' | 'test_gen';
+  type: 'auditor' | 'improver' | 'monitor' | 'test_gen' | 'stagnation';
   intervalMs: number;
   enabled: boolean;
 }
@@ -87,6 +87,7 @@ export class AgentSystem {
     this.registerAgent({ id: 'auditor-main', name: 'System Auditor', type: 'auditor', intervalMs: 60_000, enabled: true });
     this.registerAgent({ id: 'monitor-health', name: 'Health Monitor', type: 'monitor', intervalMs: 30_000, enabled: true });
     this.registerAgent({ id: 'improver-auto', name: 'Auto Improver', type: 'improver', intervalMs: 90_000, enabled: true });
+    this.registerAgent({ id: 'stagnation-detect', name: 'Stagnation Detector', type: 'stagnation' as any, intervalMs: 45_000, enabled: true });
   }
 
   registerAgent(config: AgentConfig) {
@@ -137,6 +138,7 @@ export class AgentSystem {
         case 'auditor': await this.runAuditor(agent); break;
         case 'monitor': await this.runMonitor(agent); break;
         case 'improver': await this.runImprover(agent); break;
+        case 'stagnation': await this.runStagnationDetector(agent); break;
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
@@ -223,6 +225,81 @@ export class AgentSystem {
       const runId = events[0]?.run_id || 'agent-improvements';
       await persistence.persistTask({ run_id: runId, title: `[Auto] ${task.title}`, prompt: task.prompt, priority: task.priority, status: 'queued' });
       this.emitFeedback(agent.id, 'improvement', 'info', `Task Created: ${task.title}`, `Automatically queued improvement task with priority ${task.priority}`);
+    }
+  }
+
+  private stagnationHistory: { timestamp: number; tasksDone: number; tasksTotal: number }[] = [];
+
+  private async runStagnationDetector(agent: AgentConfig) {
+    const tasks = await persistence.fetchAllTasks();
+    const doneTasks = tasks.filter(t => t.status === 'done');
+    const now = Date.now();
+
+    this.stagnationHistory.push({ timestamp: now, tasksDone: doneTasks.length, tasksTotal: tasks.length });
+    if (this.stagnationHistory.length > 20) this.stagnationHistory = this.stagnationHistory.slice(-15);
+
+    // Need at least 3 data points to detect stagnation
+    if (this.stagnationHistory.length < 3) {
+      this.emitFeedback(agent.id, 'metric', 'info', 'Stagnation Monitor', `Collecting baseline data (${this.stagnationHistory.length}/3 samples)...`);
+      return;
+    }
+
+    const recent = this.stagnationHistory.slice(-3);
+    const completionDelta = recent[recent.length - 1].tasksDone - recent[0].tasksDone;
+    const timeDelta = recent[recent.length - 1].timestamp - recent[0].timestamp;
+    const velocity = timeDelta > 0 ? (completionDelta / (timeDelta / 60_000)) : 0; // tasks per minute
+
+    // Check for stagnation: no progress over 3 samples
+    if (completionDelta === 0 && tasks.length > 0) {
+      const queuedTasks = tasks.filter(t => t.status === 'queued');
+      const failedTasks = tasks.filter(t => t.status === 'failed');
+
+      this.emitFeedback(agent.id, 'alert', 'high', 'Stagnation Detected',
+        `No task completions over last ${Math.round(timeDelta / 1000)}s. ` +
+        `${queuedTasks.length} queued, ${failedTasks.length} failed. Taking corrective action.`,
+        { velocity, completionDelta, queuedTasks: queuedTasks.length, failedTasks: failedTasks.length }, true);
+
+      // Strategy 1: Re-prioritize stuck tasks - boost queued tasks with low priority
+      const lowPrioQueued = queuedTasks.filter(t => t.priority < 50).slice(0, 3);
+      for (const t of lowPrioQueued) {
+        const newPriority = Math.min(t.priority + 30, 95);
+        await persistence.updateTask(t.id, { priority: newPriority });
+        this.emitFeedback(agent.id, 'improvement', 'medium', `Priority Boost: ${t.title}`,
+          `Boosted priority ${t.priority} → ${newPriority} to break stagnation`);
+      }
+
+      // Strategy 2: If too many failures, create a diagnostic task
+      if (failedTasks.length > 2) {
+        const events = await persistence.fetchRecentEvents(1);
+        const runId = events[0]?.run_id || 'stagnation-recovery';
+        const failureSummary = failedTasks.slice(0, 5).map(t => `${t.title}: ${t.error || 'unknown'}`).join('\n');
+        await persistence.persistTask({
+          run_id: runId,
+          title: '[Auto] Diagnose failure pattern',
+          prompt: `Multiple tasks are failing. Analyze these failures and suggest fixes:\n${failureSummary}`,
+          priority: 90,
+          status: 'queued',
+        });
+        this.emitFeedback(agent.id, 'improvement', 'high', 'Diagnostic Task Created',
+          `Created high-priority diagnostic task to analyze ${failedTasks.length} failures`);
+      }
+
+      // Strategy 3: If tasks are blocked with no progress, try unblocking
+      const blockedTasks = tasks.filter(t => t.status === 'blocked');
+      for (const bt of blockedTasks.slice(0, 2)) {
+        // Check if dependencies are actually done
+        const deps = bt.dependencies || [];
+        const allDepsDone = deps.every(depId => tasks.find(t => t.id === depId)?.status === 'done');
+        if (allDepsDone || deps.length === 0) {
+          await persistence.updateTask(bt.id, { status: 'queued' });
+          this.emitFeedback(agent.id, 'improvement', 'medium', `Unblocked: ${bt.title}`,
+            `Task was blocked but dependencies are resolved. Re-queued.`);
+        }
+      }
+    } else {
+      this.emitFeedback(agent.id, 'metric', 'info', 'System Velocity',
+        `${completionDelta} tasks completed in ${Math.round(timeDelta / 1000)}s (${velocity.toFixed(2)}/min). No stagnation detected.`,
+        { velocity, completionDelta });
     }
   }
 
