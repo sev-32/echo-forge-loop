@@ -220,6 +220,70 @@ async function createEvidenceEdge(sourceId: string, targetId: string, relation: 
   });
 }
 
+// ─── SEG: Contradiction Detection ────────────────────
+function tokenize(text: string): Set<string> {
+  return new Set(text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2));
+}
+
+function jaccardSim(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 0;
+  let intersection = 0;
+  for (const w of a) { if (b.has(w)) intersection++; }
+  const union = new Set([...a, ...b]).size;
+  return union > 0 ? intersection / union : 0;
+}
+
+async function detectContradictions(newNodeIds: string[], runId: string, witnessId: string | null): Promise<any[]> {
+  if (newNodeIds.length === 0) return [];
+  const { data: newNodes } = await supabase.from('knowledge_nodes').select('*').in('id', newNodeIds);
+  if (!newNodes || newNodes.length === 0) return [];
+
+  const { data: existingNodes } = await supabase.from('knowledge_nodes').select('*')
+    .not('id', 'in', `(${newNodeIds.join(',')})`)
+    .order('created_at', { ascending: false }).limit(200);
+  if (!existingNodes || existingNodes.length === 0) return [];
+
+  const { data: allEdges } = await supabase.from('knowledge_edges').select('source_id, target_id, edge_type');
+
+  const negationPairs = [
+    [/\bnot\b/i, /\bshould\b/i], [/\bavoid\b/i, /\buse\b/i],
+    [/\bdon't\b/i, /\bdo\b/i], [/\bnever\b/i, /\balways\b/i],
+    [/\bdeprecated\b/i, /\brecommended\b/i], [/\banti-pattern\b/i, /\bbest practice\b/i],
+  ];
+
+  const detected: any[] = [];
+  for (const nn of newNodes) {
+    for (const en of existingNodes) {
+      const sim = jaccardSim(tokenize(nn.label), tokenize(en.label));
+      if (sim < 0.3) continue;
+
+      // Check for contradicts edges
+      const hasContraEdge = (allEdges || []).some((e: any) =>
+        (e.source_id === nn.id && e.target_id === en.id && e.edge_type === 'contradicts') ||
+        (e.source_id === en.id && e.target_id === nn.id && e.edge_type === 'contradicts')
+      );
+
+      let stance: string | null = hasContraEdge ? 'contradicts' : null;
+      if (!stance) {
+        const la = nn.label.toLowerCase(), lb = en.label.toLowerCase();
+        for (const [pA, pB] of negationPairs) {
+          if ((pA.test(la) && pB.test(lb)) || (pB.test(la) && pA.test(lb))) { stance = 'weakly_contradicts'; break; }
+        }
+      }
+      if (!stance && Math.abs((nn as any).confidence - (en as any).confidence) > 0.4) stance = 'tension';
+      if (!stance) continue;
+
+      const { data, error } = await supabase.from('contradictions').insert({
+        node_a_id: nn.id, node_b_id: en.id, similarity_score: sim, stance,
+        detection_method: 'semantic_jaccard', run_id: runId, witness_id: witnessId,
+        metadata: { node_a_label: nn.label, node_b_label: en.label, node_a_confidence: (nn as any).confidence, node_b_confidence: (en as any).confidence },
+      }).select().single();
+      if (!error && data) detected.push(data);
+    }
+  }
+  return detected;
+}
+
 // ─── SDF-CVF: Quartet Parity ────────────────────────
 async function createQuartetTrace(runId: string, outputs: string[], witnessId: string | null) {
   const codeHash = await sha256(outputs.join('|code|'));
@@ -909,6 +973,33 @@ ${activeRulesSummary || 'None yet.'}
             }
 
             send({ type: 'knowledge_update', nodes_added: Object.keys(nodeMap).length, edges_added: (reflection.knowledge_edges || []).length });
+
+            // ─── SEG: Contradiction Detection ───
+            const newNodeIds = Object.values(nodeMap).filter(Boolean) as string[];
+            if (newNodeIds.length > 0) {
+              send({ type: 'thinking', phase: 'reflect', content: `SEG: Scanning ${newNodeIds.length} new nodes for contradictions against existing graph...` });
+              try {
+                const detected = await detectContradictions(newNodeIds, runId, reflWitness?.id || null);
+                if (detected.length > 0) {
+                  send({
+                    type: 'contradictions_detected',
+                    count: detected.length,
+                    contradictions: detected.map((c: any) => ({
+                      id: c.id,
+                      node_a_label: c.metadata?.node_a_label,
+                      node_b_label: c.metadata?.node_b_label,
+                      stance: c.stance,
+                      similarity: c.similarity_score,
+                    })),
+                  });
+                  send({ type: 'thinking', phase: 'reflect', content: `⚠️ SEG: ${detected.length} contradiction(s) detected! Check the Evidence tab.` });
+                } else {
+                  send({ type: 'thinking', phase: 'reflect', content: 'SEG: No contradictions detected — graph is consistent.' });
+                }
+              } catch (cdErr) {
+                console.error('Contradiction detection error:', cdErr);
+              }
+            }
 
             // ─── Process rules evolution ───
             const newRules = reflection.new_process_rules || [];
