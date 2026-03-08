@@ -20,6 +20,8 @@ interface RunCapture {
   runComplete: any | null;
   thoughts: Array<{ phase: string; content: string }>;
   memoryEvents: any[];
+  sectionEvents: any[];
+  continuationEvents: any[];
   errors: string[];
   totalDurationMs: number;
   rawEventTypes: string[];
