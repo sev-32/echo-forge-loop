@@ -486,6 +486,9 @@ Deno.test("Full pipeline: thinking → plan → execute → verify → reflect �
   console.log(`  Planning score:     ${run.reflection?.process_evaluation?.planning_score ?? "N/A"}/100`);
   console.log(`  Strategy score:     ${run.reflection?.strategy_assessment?.effectiveness_score ?? "N/A"}/100`);
   console.log(`  Tokens used:        ${run.runComplete.total_tokens}`);
+  console.log(`  Total words:        ${totalWordCount}`);
+  console.log(`  Sections planned:   ${run.sectionEvents.filter(e => e.type === 'task_sections_planned').length > 0 ? run.sectionEvents.filter(e => e.type === 'task_sections_planned').map(e => e.sections.length).join('+') + ' sections' : 'single-pass'}`);
+  console.log(`  Continuations:      ${run.continuationEvents.length}`);
   console.log(`  Duration:           ${run.totalDurationMs}ms`);
   console.log(`  Events emitted:     ${run.events.length}`);
   console.log(`  Thinking steps:     ${run.thoughts.length}`);
