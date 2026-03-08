@@ -1350,8 +1350,53 @@ function CompletedRunCard({ runData }: { runData: RunData }) {
         {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
       </button>
 
+      {/* Synthesized Response — PRIMARY OUTPUT */}
+      {runData.synthesizedResponse && (
+        <div className="px-4 pt-4 pb-2">
+          <div className="prose prose-sm max-w-none">
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+              {runData.synthesizedResponse}
+            </ReactMarkdown>
+          </div>
+          {(runData.synthesisFollowUps?.length ?? 0) > 0 && (
+            <div className="mt-3 p-2.5 rounded-lg bg-primary/5 border border-primary/15">
+              <div className="text-[10px] font-semibold text-primary mb-1.5 flex items-center gap-1"><Lightbulb className="h-3 w-3" /> Follow-up suggestions</div>
+              <div className="space-y-1">
+                {runData.synthesisFollowUps!.map((s, i) => (
+                  <div key={i} className="text-[10px] text-muted-foreground flex gap-1.5">
+                    <span className="text-primary">→</span> {s}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {(runData.synthesisCaveats?.length ?? 0) > 0 && (
+            <div className="mt-2 space-y-0.5">
+              {runData.synthesisCaveats!.map((c, i) => (
+                <div key={i} className="text-[9px] text-muted-foreground/60 flex items-center gap-1">
+                  <span className="text-[hsl(var(--status-warning))]">⚠</span> {c}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Audit Decision Badge */}
+      {runData.auditDecision && (
+        <div className="mx-4 mt-2 p-2 rounded-lg bg-[hsl(var(--status-info))]/5 border border-[hsl(var(--status-info))]/15">
+          <div className="flex items-center gap-2 text-[9px]">
+            <ScanEye className="h-3 w-3 text-[hsl(var(--status-info))]" />
+            <span className="font-medium text-[hsl(var(--status-info))]">Audit: {runData.auditDecision.verdict}</span>
+            <span className="text-muted-foreground">• Conf: {((runData.auditDecision.confidence || 0) * 100).toFixed(0)}%</span>
+            <span className="text-muted-foreground">• Tone: {runData.auditDecision.style_analysis?.tone || '?'}</span>
+            {(runData.auditLoops || 0) > 1 && <Badge variant="outline" className="text-[8px] h-3.5 px-1">{runData.auditLoops} loops</Badge>}
+          </div>
+        </div>
+      )}
+
       {expanded && (
-        <div className="px-4 pb-4 space-y-3 border-t border-border/50">
+        <div className="px-4 pb-4 space-y-3 border-t border-border/50 mt-2">
           {/* Thoughts summary */}
           {runData.thoughts.length > 0 && (
             <details className="mt-3">
