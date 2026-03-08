@@ -3,16 +3,17 @@
 // ============================================
 
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 
 // ---- Events ----
 export async function persistEvent(runId: string, eventType: string, payload: Record<string, unknown>, hashPrev?: string, hashSelf?: string) {
-  const { data, error } = await supabase.from('events').insert({
+  const { data, error } = await supabase.from('events').insert([{
     run_id: runId,
     event_type: eventType,
-    payload,
+    payload: payload as Json,
     hash_prev: hashPrev || null,
     hash_self: hashSelf || null,
-  }).select().single();
+  }]).select().single();
   if (error) console.error('persistEvent error:', error);
   return data;
 }
@@ -33,9 +34,9 @@ export async function fetchRecentEvents(limit = 50) {
 
 // ---- Snapshots ----
 export async function persistSnapshot(runId: string, reason: string, state: Record<string, unknown>, eventCount: number) {
-  const { data, error } = await supabase.from('snapshots').insert({
-    run_id: runId, reason, state, event_count: eventCount,
-  }).select().single();
+  const { data, error } = await supabase.from('snapshots').insert([{
+    run_id: runId, reason, state: state as Json, event_count: eventCount,
+  }]).select().single();
   if (error) console.error('persistSnapshot error:', error);
   return data;
 }
@@ -52,22 +53,30 @@ export async function persistTask(task: {
   run_id: string; title: string; prompt: string; status?: string; priority?: number;
   acceptance_criteria?: unknown[]; dependencies?: string[];
 }) {
-  const { data, error } = await supabase.from('tasks').insert({
+  const { data, error } = await supabase.from('tasks').insert([{
     run_id: task.run_id,
     title: task.title,
     prompt: task.prompt,
     status: task.status || 'queued',
     priority: task.priority || 50,
-    acceptance_criteria: task.acceptance_criteria || [],
+    acceptance_criteria: (task.acceptance_criteria || []) as Json,
     dependencies: task.dependencies || [],
-  }).select().single();
+  }]).select().single();
   if (error) console.error('persistTask error:', error);
   return data;
 }
 
 export async function updateTask(taskId: string, updates: Record<string, unknown>) {
+  const cleanUpdates: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(updates)) {
+    if (k === 'acceptance_criteria' || k === 'history' || k === 'result') {
+      cleanUpdates[k] = v as Json;
+    } else {
+      cleanUpdates[k] = v;
+    }
+  }
   const { data, error } = await supabase.from('tasks')
-    .update(updates).eq('id', taskId).select().single();
+    .update(cleanUpdates).eq('id', taskId).select().single();
   if (error) console.error('updateTask error:', error);
   return data;
 }
@@ -92,17 +101,17 @@ export async function persistJournalEntry(entry: {
   tags?: string[]; priority?: string; run_id?: string; task_id?: string; parent_id?: string;
   metadata?: Record<string, unknown>;
 }) {
-  const { data, error } = await supabase.from('journal_entries').insert({
+  const { data, error } = await supabase.from('journal_entries').insert([{
     entry_type: entry.entry_type,
     title: entry.title,
     content: entry.content,
     tags: entry.tags || [],
     priority: entry.priority || 'medium',
-    run_id: entry.run_id,
-    task_id: entry.task_id,
+    run_id: entry.run_id || null,
+    task_id: entry.task_id || null,
     parent_id: entry.parent_id || null,
-    metadata: entry.metadata || {},
-  }).select().single();
+    metadata: (entry.metadata || {}) as Json,
+  }]).select().single();
   if (error) console.error('persistJournalEntry error:', error);
   return data;
 }
@@ -119,10 +128,10 @@ export async function fetchJournalEntries(options?: { run_id?: string; entry_typ
 
 // ---- Context Banks ----
 export async function persistContextBank(bank: { name: string; description: string; max_tokens?: number; auto_prune?: boolean }) {
-  const { data, error } = await supabase.from('context_banks').insert({
+  const { data, error } = await supabase.from('context_banks').insert([{
     name: bank.name, description: bank.description,
     max_tokens: bank.max_tokens || 50000, auto_prune: bank.auto_prune ?? true,
-  }).select().single();
+  }]).select().single();
   if (error) console.error('persistContextBank error:', error);
   return data;
 }
@@ -136,10 +145,10 @@ export async function fetchContextBanks() {
 export async function persistContextBankEntry(entry: {
   bank_id: string; content: string; source: string; priority?: number; tokens_estimate?: number;
 }) {
-  const { data, error } = await supabase.from('context_bank_entries').insert({
+  const { data, error } = await supabase.from('context_bank_entries').insert([{
     bank_id: entry.bank_id, content: entry.content, source: entry.source,
     priority: entry.priority || 50, tokens_estimate: entry.tokens_estimate || Math.ceil(entry.content.length / 4),
-  }).select().single();
+  }]).select().single();
   if (error) console.error('persistContextBankEntry error:', error);
   return data;
 }
@@ -153,9 +162,9 @@ export async function fetchContextBankEntries(bankId: string) {
 
 // ---- Knowledge Graph ----
 export async function persistKnowledgeNode(node: { label: string; node_type: string; metadata?: Record<string, unknown> }) {
-  const { data, error } = await supabase.from('knowledge_nodes').insert({
-    label: node.label, node_type: node.node_type, metadata: node.metadata || {},
-  }).select().single();
+  const { data, error } = await supabase.from('knowledge_nodes').insert([{
+    label: node.label, node_type: node.node_type, metadata: (node.metadata || {}) as Json,
+  }]).select().single();
   if (error) console.error('persistKnowledgeNode error:', error);
   return data;
 }
@@ -163,10 +172,10 @@ export async function persistKnowledgeNode(node: { label: string; node_type: str
 export async function persistKnowledgeEdge(edge: {
   source_id: string; target_id: string; relation: string; weight?: number;
 }) {
-  const { data, error } = await supabase.from('knowledge_edges').insert({
+  const { data, error } = await supabase.from('knowledge_edges').insert([{
     source_id: edge.source_id, target_id: edge.target_id,
     relation: edge.relation, weight: edge.weight || 1.0,
-  }).select().single();
+  }]).select().single();
   if (error) console.error('persistKnowledgeEdge error:', error);
   return data;
 }
@@ -188,20 +197,28 @@ export async function persistTestRun(run: {
   duration_ms?: number; score_breakdown?: Record<string, unknown>; events_snapshot?: unknown[];
   budget_snapshot?: Record<string, unknown>; spec_snapshot?: Record<string, unknown>; errors?: string[];
 }) {
-  const { data, error } = await supabase.from('test_runs').insert({
-    test_id: run.test_id, suite_id: run.suite_id, status: run.status,
+  const { data, error } = await supabase.from('test_runs').insert([{
+    test_id: run.test_id, suite_id: run.suite_id || null, status: run.status,
     score: run.score, max_score: run.max_score, duration_ms: run.duration_ms,
-    score_breakdown: run.score_breakdown || {}, events_snapshot: run.events_snapshot || [],
-    budget_snapshot: run.budget_snapshot || {}, spec_snapshot: run.spec_snapshot || {},
+    score_breakdown: (run.score_breakdown || {}) as Json, events_snapshot: (run.events_snapshot || []) as Json,
+    budget_snapshot: (run.budget_snapshot || {}) as Json, spec_snapshot: (run.spec_snapshot || {}) as Json,
     errors: run.errors || [],
-  }).select().single();
+  }]).select().single();
   if (error) console.error('persistTestRun error:', error);
   return data;
 }
 
 export async function updateTestRun(runId: string, updates: Record<string, unknown>) {
+  const cleanUpdates: Record<string, unknown> = { completed_at: new Date().toISOString() };
+  for (const [k, v] of Object.entries(updates)) {
+    if (['score_breakdown', 'events_snapshot', 'budget_snapshot', 'spec_snapshot', 'comparison', 'notes'].includes(k)) {
+      cleanUpdates[k] = v as Json;
+    } else {
+      cleanUpdates[k] = v;
+    }
+  }
   const { data, error } = await supabase.from('test_runs')
-    .update({ ...updates, completed_at: new Date().toISOString() }).eq('id', runId).select().single();
+    .update(cleanUpdates).eq('id', runId).select().single();
   if (error) console.error('updateTestRun error:', error);
   return data;
 }
