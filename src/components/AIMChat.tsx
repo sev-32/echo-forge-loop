@@ -468,9 +468,13 @@ export function AIMChat() {
             runId: data.run_id || rd.runId,
             goal: data.goal,
             approach: data.approach || '',
+            overallComplexity: data.overall_complexity || 'moderate',
             tasks: data.tasks.map((t: any) => ({
               id: t.id, index: t.index, title: t.title, status: 'queued' as const,
-              priority: t.priority, criteriaCount: t.criteria_count, output: '', verification: undefined,
+              priority: t.priority, criteriaCount: t.criteria_count,
+              detailLevel: t.detail_level || 'standard',
+              expectedSections: t.expected_sections || 4,
+              output: '', verification: undefined,
             })),
             status: 'executing',
           }));
