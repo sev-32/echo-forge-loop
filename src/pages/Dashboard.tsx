@@ -115,6 +115,9 @@ export default function Dashboard() {
           <TabsList className="bg-surface-1 mb-4 self-start">
             <TabsTrigger value="orchestration">Orchestration</TabsTrigger>
             <TabsTrigger value="activity">Live Activity</TabsTrigger>
+            <TabsTrigger value="agents">
+              <Bot className="h-3 w-3 mr-1" /> Agents
+            </TabsTrigger>
             <TabsTrigger value="journal">AI Journal</TabsTrigger>
             <TabsTrigger value="tests">Test Harness</TabsTrigger>
             <TabsTrigger value="audit">Test Audit</TabsTrigger>
