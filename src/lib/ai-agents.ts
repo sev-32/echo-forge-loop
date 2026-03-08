@@ -10,7 +10,7 @@ import { generateId } from '@/lib/utils';
 export interface AgentConfig {
   id: string;
   name: string;
-  type: 'auditor' | 'improver' | 'monitor' | 'test_gen';
+  type: 'auditor' | 'improver' | 'monitor' | 'test_gen' | 'stagnation';
   intervalMs: number;
   enabled: boolean;
 }
