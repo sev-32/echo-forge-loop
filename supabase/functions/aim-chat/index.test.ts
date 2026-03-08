@@ -259,8 +259,8 @@ Deno.test("Full pipeline: thinking → plan → execute → verify → reflect �
   console.log(`  Complexity: ${run.plan.overall_complexity}`);
   console.log(`  Tasks: ${run.plan.tasks.length}`);
   for (const t of run.plan.tasks) {
-    console.log(`    → ${t.title} (${t.acceptance_criteria.length} criteria)`);
-    for (const c of t.acceptance_criteria) {
+    console.log(`    → [${t.detail_level || '?'}] ${t.title} (${t.acceptance_criteria?.length || 0} criteria)`);
+    for (const c of t.acceptance_criteria || []) {
       console.log(`        • ${c}`);
     }
   }
