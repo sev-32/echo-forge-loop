@@ -654,14 +654,87 @@ ${plan.tasks.map((t: any, i: number) => `${i+1}. [${t.detail_level}] ${t.title}
         }
 
         // ─── Final stats ───
-        send({ type: 'thinking', phase: 'complete', content: `Run complete. ${plan.tasks.length} tasks, ${totalTokens.toLocaleString()} tokens used.` });
+        const doneCount = taskVerifications.filter((v: any) => v?.passed).length;
+        const scores = taskVerifications.filter((v: any) => v?.score != null).map((v: any) => v.score);
+        const avgScore = scores.length ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : null;
+
+        send({ type: 'thinking', phase: 'complete', content: `Run complete. ${plan.tasks.length} tasks, ${totalTokens.toLocaleString()} tokens used, ${doneCount}/${plan.tasks.length} passed, avg score: ${avgScore ?? 'N/A'}.` });
+
+        // ─── Persist full run trace ───
+        try {
+          const allThoughts: any[] = [];
+          // We collect thoughts from SSE events we've been sending — reconstruct from events table
+          const tasksDetail = plan.tasks.map((t: any, i: number) => ({
+            title: t.title,
+            detail_level: t.detail_level,
+            priority: t.priority,
+            reasoning: t.reasoning || '',
+            acceptance_criteria: t.acceptance_criteria,
+            output_length: taskOutputs[i]?.length || 0,
+            output_excerpt: taskOutputs[i]?.slice(0, 2000) || '',
+            verification: taskVerifications[i] || null,
+            retried: taskVerifications[i]?.attempt === 2 || false,
+          }));
+
+          // Get reflection data if available
+          let reflectionData = null;
+          let planningScore = null;
+          let strategyScore = null;
+          let generatedRulesData: any[] = [];
+          let knowledgeUpdateData = null;
+
+          // These were set during reflection phase — re-parse from what we sent
+          // We'll read from the last reflection event in the stream
+          const { data: journalRefl } = await supabase.from('journal_entries')
+            .select('content, metadata')
+            .eq('run_id', runId)
+            .eq('entry_type', 'reflection')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (journalRefl) {
+            planningScore = journalRefl.metadata?.planning_score || null;
+            strategyScore = journalRefl.metadata?.strategy_score || null;
+            reflectionData = { content: journalRefl.content, metadata: journalRefl.metadata };
+          }
+
+          const endTime = Date.now();
+          await supabase.from('run_traces').insert({
+            run_id: runId,
+            goal: plan.goal_summary || lastUserMsg,
+            approach: plan.approach || '',
+            overall_complexity: plan.overall_complexity || 'moderate',
+            planning_reasoning: plan.planning_reasoning || '',
+            open_questions: plan.open_questions || [],
+            status: 'complete',
+            total_tokens: totalTokens,
+            task_count: plan.tasks.length,
+            tasks_passed: doneCount,
+            avg_score: avgScore,
+            planning_score: planningScore,
+            strategy_score: strategyScore,
+            memory_loaded: {
+              reflections: (pastReflections.data || []).length,
+              rules: (processRules.data || []).length,
+              knowledge: (recentKnowledge.data || []).length,
+            },
+            tasks_detail: tasksDetail,
+            reflection: reflectionData,
+            generated_rules: generatedRulesData,
+            knowledge_update: knowledgeUpdateData,
+            completed_at: new Date().toISOString(),
+          });
+        } catch (traceErr) {
+          console.error("Failed to save run trace:", traceErr);
+        }
 
         await supabase.from('events').insert({
           run_id: runId, event_type: 'RUN_STOPPED',
-          payload: { reason: 'completed', total_tokens: totalTokens, task_count: plan.tasks.length },
+          payload: { reason: 'completed', total_tokens: totalTokens, task_count: plan.tasks.length, tasks_passed: doneCount, avg_score: avgScore },
         });
 
-        send({ type: 'run_complete', run_id: runId, total_tokens: totalTokens, task_count: plan.tasks.length });
+        send({ type: 'run_complete', run_id: runId, total_tokens: totalTokens, task_count: plan.tasks.length, tasks_passed: doneCount, avg_score: avgScore });
         if (!closed) {
           try { controller.enqueue(encoder.encode("data: [DONE]\n\n")); controller.close(); }
           catch { /* already closed */ }

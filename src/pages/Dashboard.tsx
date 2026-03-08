@@ -10,11 +10,13 @@ import { TestAuditPanel } from '@/components/TestAuditPanel';
 import { AgentPanel } from '@/components/AgentPanel';
 import { RegressionDashboard } from '@/components/RegressionDashboard';
 import { KnowledgeGraphPanel } from '@/components/KnowledgeGraphPanel';
+import { RunHistoryPanel } from '@/components/RunHistoryPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import {
   MessageSquare, LayoutDashboard, Brain, Bot, BarChart3,
-  Network, Activity, FlaskConical, BookOpen, PanelRightOpen, PanelRightClose
+  Network, Activity, FlaskConical, BookOpen, PanelRightOpen, PanelRightClose,
+  History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -38,6 +40,7 @@ export default function Dashboard() {
           <TabsList className="bg-transparent h-7 gap-0 p-0">
             {[
               { value: 'chat', icon: MessageSquare, label: 'Chat' },
+              { value: 'history', icon: History, label: 'Runs' },
               { value: 'tasks', icon: LayoutDashboard, label: 'Tasks' },
               { value: 'agents', icon: Bot, label: 'Agents' },
               { value: 'knowledge', icon: Network, label: 'Knowledge' },
@@ -73,6 +76,7 @@ export default function Dashboard() {
         {/* Main content */}
         <div className="flex-1 overflow-hidden">
           {activeTab === 'chat' && <AIMChat />}
+          {activeTab === 'history' && <RunHistoryPanel />}
           {activeTab === 'tasks' && (
             <div className="grid grid-cols-12 gap-3 h-full p-3">
               <div className="col-span-5"><TaskQueuePanel /></div>
