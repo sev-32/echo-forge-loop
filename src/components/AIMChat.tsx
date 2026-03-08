@@ -1118,6 +1118,43 @@ export function AIMChat() {
           updateRun(rd => ({ ...rd, generatedRules: data.rules, activePhase: 'evolve' }));
           emitSystemEvent('reflect', `Generated ${data.rules?.length || 0} new process rules`);
         },
+        onAuditStart: () => {
+          updateRun(rd => ({ ...rd, status: 'auditing' as any, activePhase: 'audit' }));
+          emitSystemEvent('verify', '🔍 Auditing outputs holistically...');
+        },
+        onAuditDecision: (data) => {
+          updateRun(rd => ({
+            ...rd,
+            auditDecision: {
+              verdict: data.verdict,
+              confidence: data.confidence,
+              reasoning: data.reasoning,
+              style_analysis: data.style_analysis,
+              next_actions: data.next_actions,
+              synthesis_plan: data.synthesis_plan,
+              additional_tasks_count: data.additional_tasks_count,
+              loop: data.loop,
+            },
+            auditLoops: data.loop,
+          }));
+          emitSystemEvent('verify', `Audit: ${data.verdict} (conf: ${(data.confidence * 100).toFixed(0)}%)${data.additional_tasks_count ? ` +${data.additional_tasks_count} tasks` : ''}`);
+        },
+        onAuditLoopStart: (loop, tasks) => {
+          addThought('audit', `Loop ${loop}: executing ${tasks.length} deepening task(s): ${tasks.join(', ')}`);
+        },
+        onSynthesisStart: () => {
+          updateRun(rd => ({ ...rd, status: 'synthesizing' as any, activePhase: 'synthesize' }));
+          emitSystemEvent('task_done', '✨ Synthesizing final response...');
+        },
+        onSynthesisComplete: (data) => {
+          updateRun(rd => ({
+            ...rd,
+            synthesizedResponse: data.response,
+            synthesisFollowUps: data.follow_up_suggestions || [],
+            synthesisCaveats: data.caveats || [],
+          }));
+          emitSystemEvent('task_done', `Synthesis complete (conf: ${((data.confidence || 0) * 100).toFixed(0)}%)`);
+        },
         onRunComplete: (data) => {
           updateRun(rd => ({ ...rd, status: 'complete', totalTokens: data.total_tokens, activePhase: 'complete' }));
           setIsRunning(false);
