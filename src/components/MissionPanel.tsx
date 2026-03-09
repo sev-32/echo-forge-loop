@@ -123,7 +123,7 @@ export function MissionPanel() {
 
   // Load steps for selected mission
   const loadSteps = async (missionId: string) => {
-    const { data, error } = await supabase
+    const { data, error} = await supabase
       .from('mission_steps')
       .select('*')
       .eq('mission_id', missionId)
@@ -134,7 +134,7 @@ export function MissionPanel() {
       return;
     }
     
-    setSteps(data || []);
+    setSteps((data || []) as MissionStep[]);
   };
 
   useEffect(() => {
