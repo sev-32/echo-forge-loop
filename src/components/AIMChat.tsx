@@ -303,40 +303,39 @@ const phaseConfig: Record<string, { icon: any; label: string; color: string }> =
   complete: { icon: CheckCircle2, label: 'Complete', color: 'text-[hsl(var(--status-success))]' },
 };
 
-// ─── Phase Pipeline ─────────────────────────────────────
+// ─── Phase Pipeline (CNC-machined gauge strip) ─────────
 function PhasePipeline({ activePhase, status }: { activePhase: string; status: RunData['status'] }) {
   const phases = ['memory', 'planning', 'execute', 'verify', 'audit', 'synthesize', 'reflect', 'evolve', 'complete'];
   const activeIdx = phases.indexOf(activePhase);
 
   return (
-    <div className="flex items-center gap-1 px-3 py-2 bg-card border-b border-border overflow-x-auto">
+    <div className="flex items-center gap-1 px-3 py-2 surface-well border-b border-border overflow-x-auto">
       {phases.map((phase, i) => {
         const cfg = phaseConfig[phase];
         const Icon = cfg.icon;
         const isActive = phase === activePhase;
         const isPast = i < activeIdx || status === 'complete';
-        const isFuture = i > activeIdx && status !== 'complete';
 
         return (
           <div key={phase} className="flex items-center gap-1">
             {i > 0 && (
-              <div className={`w-4 h-px ${isPast ? 'bg-[hsl(var(--status-success))]' : isActive ? 'bg-accent' : 'bg-border'}`} />
+              <div className={`w-4 h-px ${isPast ? 'bg-status-success' : isActive ? 'bg-primary' : 'bg-border'}`} />
             )}
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-medium transition-all duration-300 ${
-              isActive ? `bg-accent/10 border border-accent/30 ${cfg.color}` :
-              isPast ? 'text-[hsl(var(--status-success))] bg-[hsl(var(--status-success))]/5' :
-              'text-muted-foreground/40'
+            <div className={`flex items-center gap-1 px-2 py-1 rounded text-[9px] font-mono font-medium transition-all duration-300 ${
+              isActive ? `surface-raised amber-glow ${cfg.color}` :
+              isPast ? 'text-status-success bg-status-success/5' :
+              'text-label-engraved'
             }`}>
               <Icon className={`h-3 w-3 ${isActive ? 'animate-pulse' : ''}`} />
-              {cfg.label}
+              <span className="tracking-wide">{cfg.label.toUpperCase()}</span>
               {isPast && !isActive && <CheckCircle2 className="h-2.5 w-2.5" />}
             </div>
           </div>
         );
       })}
       {status === 'complete' && (
-        <Badge className="ml-auto text-[8px] h-4 bg-[hsl(var(--status-success))]/10 text-[hsl(var(--status-success))] border-[hsl(var(--status-success))]/20">
-          ✓ Complete
+        <Badge className="ml-auto text-[8px] h-4 bg-status-success/10 text-status-success border-status-success/20 font-mono">
+          ✓ COMPLETE
         </Badge>
       )}
     </div>
