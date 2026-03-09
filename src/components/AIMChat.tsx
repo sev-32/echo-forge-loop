@@ -342,7 +342,7 @@ function PhasePipeline({ activePhase, status }: { activePhase: string; status: R
   );
 }
 
-// ─── Thought Stream ─────────────────────────────────────
+// ─── Thought Stream (Terminal aesthetic) ───────────────
 function ThoughtStream({ thoughts }: { thoughts: ThoughtEntry[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -351,31 +351,32 @@ function ThoughtStream({ thoughts }: { thoughts: ThoughtEntry[] }) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border bg-card/50">
-        <Eye className="h-3.5 w-3.5 text-accent" />
-        <span className="text-[10px] font-bold text-accent">AI Consciousness</span>
-        <Badge variant="outline" className="text-[8px] h-3.5 px-1 ml-auto">{thoughts.length}</Badge>
+      <div className="panel-header">
+        <div className="flex items-center gap-1.5">
+          <Eye className="h-3.5 w-3.5 text-primary" />
+          <span className="text-engraved">AI CONSCIOUSNESS</span>
+        </div>
+        <Badge variant="outline" className="text-[8px] h-3.5 px-1 font-mono border-border text-label-muted">{thoughts.length}</Badge>
       </div>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-2 space-y-1 bg-terminal-bg">
         {thoughts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground/40">
-            <Brain className="h-5 w-5 mb-1" />
-            <span className="text-[9px]">Awaiting thoughts...</span>
+          <div className="flex flex-col items-center justify-center h-32">
+            <Brain className="h-5 w-5 mb-1 text-label-engraved" />
+            <span className="text-engraved">AWAITING THOUGHTS</span>
           </div>
         ) : thoughts.map((t) => {
           const cfg = phaseConfig[t.phase] || phaseConfig.execute;
           const Icon = cfg.icon;
           return (
-            <div key={t.id} className="flex gap-1.5 text-[9px] leading-relaxed animate-in fade-in slide-in-from-left-1 duration-200">
+            <div key={t.id} className="flex gap-1.5 text-[9px] leading-relaxed animate-in fade-in slide-in-from-left-1 duration-200 font-mono">
               <div className="flex-shrink-0 mt-0.5">
                 <Icon className={`h-3 w-3 ${cfg.color}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <span className={`font-mono font-medium ${cfg.color}`}>{cfg.label}</span>
-                <span className="text-muted-foreground/50 mx-1">•</span>
-                <span className="text-muted-foreground">{t.content}</span>
+                <span className={`font-semibold ${cfg.color}`}>[{cfg.label.toUpperCase()}]</span>
+                <span className="text-terminal-fg ml-1">{t.content}</span>
               </div>
-              <span className="text-muted-foreground/30 font-mono text-[8px] flex-shrink-0">
+              <span className="text-label-engraved text-[8px] flex-shrink-0">
                 {new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             </div>
