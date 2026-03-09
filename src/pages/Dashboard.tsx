@@ -84,6 +84,7 @@ export default function Dashboard() {
           {activeTab === 'chat' && <AIMChat />}
           {activeTab === 'history' && <RunHistoryPanel />}
           {activeTab === 'memory' && <MemoryPanel />}
+          {activeTab === 'missions' && <MissionPanel />}
           {activeTab === 'trust' && <TrustPanel />}
           {activeTab === 'orchestration' && <OrchestrationPanel />}
           {activeTab === 'knowledge' && <KnowledgeGraphPanel />}
