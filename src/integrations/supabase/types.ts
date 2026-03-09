@@ -728,6 +728,128 @@ export type Database = {
         }
         Relationships: []
       }
+      mission_steps: {
+        Row: {
+          action_summary: string
+          artifacts_touched: Json
+          completed_at: string | null
+          confidence: number | null
+          created_at: string
+          id: string
+          mission_id: string
+          result: Json | null
+          sequence_no: number
+          started_at: string | null
+          status: string
+          tools_invoked: Json
+          updated_at: string
+          validation_summary: string | null
+        }
+        Insert: {
+          action_summary: string
+          artifacts_touched?: Json
+          completed_at?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          mission_id: string
+          result?: Json | null
+          sequence_no: number
+          started_at?: string | null
+          status?: string
+          tools_invoked?: Json
+          updated_at?: string
+          validation_summary?: string | null
+        }
+        Update: {
+          action_summary?: string
+          artifacts_touched?: Json
+          completed_at?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          mission_id?: string
+          result?: Json | null
+          sequence_no?: number
+          started_at?: string | null
+          status?: string
+          tools_invoked?: Json
+          updated_at?: string
+          validation_summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_steps_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      missions: {
+        Row: {
+          allowed_tools: Json
+          autonomy_tier: number
+          budget_limits: Json
+          confidence_trajectory: Json
+          created_at: string
+          escalation_conditions: Json
+          forbidden_actions: Json
+          id: string
+          metadata: Json
+          objective: string
+          risk_class: string
+          rollback_plan: string | null
+          run_id: string | null
+          status: Database["public"]["Enums"]["mission_status"]
+          stop_conditions: Json
+          success_metrics: Json
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_tools?: Json
+          autonomy_tier?: number
+          budget_limits?: Json
+          confidence_trajectory?: Json
+          created_at?: string
+          escalation_conditions?: Json
+          forbidden_actions?: Json
+          id?: string
+          metadata?: Json
+          objective: string
+          risk_class?: string
+          rollback_plan?: string | null
+          run_id?: string | null
+          status?: Database["public"]["Enums"]["mission_status"]
+          stop_conditions?: Json
+          success_metrics?: Json
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_tools?: Json
+          autonomy_tier?: number
+          budget_limits?: Json
+          confidence_trajectory?: Json
+          created_at?: string
+          escalation_conditions?: Json
+          forbidden_actions?: Json
+          id?: string
+          metadata?: Json
+          objective?: string
+          risk_class?: string
+          rollback_plan?: string | null
+          run_id?: string | null
+          status?: Database["public"]["Enums"]["mission_status"]
+          stop_conditions?: Json
+          success_metrics?: Json
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       persona_history: {
         Row: {
           axis_scores: Json
@@ -1332,6 +1454,17 @@ export type Database = {
       gate_result: "pass" | "fail" | "warn" | "abstain"
       gate_type: "quality" | "safety" | "policy"
       kappa_gate_result: "pass" | "abstain" | "fail"
+      mission_status:
+        | "drafted"
+        | "awaiting_approval"
+        | "approved"
+        | "active"
+        | "paused"
+        | "blocked"
+        | "completed"
+        | "failed"
+        | "aborted"
+        | "rolled_back"
       plan_status: "draft" | "active" | "completed" | "failed" | "cancelled"
       plan_step_type:
         | "retrieve"
@@ -1519,6 +1652,18 @@ export const Constants = {
       gate_result: ["pass", "fail", "warn", "abstain"],
       gate_type: ["quality", "safety", "policy"],
       kappa_gate_result: ["pass", "abstain", "fail"],
+      mission_status: [
+        "drafted",
+        "awaiting_approval",
+        "approved",
+        "active",
+        "paused",
+        "blocked",
+        "completed",
+        "failed",
+        "aborted",
+        "rolled_back",
+      ],
       plan_status: ["draft", "active", "completed", "failed", "cancelled"],
       plan_step_type: [
         "retrieve",
