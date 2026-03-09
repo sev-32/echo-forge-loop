@@ -37,6 +37,9 @@ const railItems: RailItem[] = [
   { id: 'cognition', icon: IconCognitive, label: 'Cognition', shortcut: '7', section: 'secondary' },
   { id: 'knowledge', icon: IconKnowledge, label: 'Evidence Graph', shortcut: '8', section: 'secondary' },
   { id: 'trust', icon: IconTrust, label: 'Trust & Audit', shortcut: '9', section: 'secondary' },
+  { id: 'persona', icon: IconPersona, label: 'Persona', shortcut: '0', section: 'secondary' },
+  { id: 'evolution', icon: IconEvolution, label: 'Evolution', section: 'secondary' },
+  { id: 'context', icon: IconContext, label: 'Context', section: 'secondary' },
 ];
 
 interface LeftRailProps {

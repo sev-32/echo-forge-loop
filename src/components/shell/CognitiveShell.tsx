@@ -25,6 +25,7 @@ const TAB_SHORTCUTS: Record<string, string> = {
   '7': 'cognition',
   '8': 'knowledge',
   '9': 'trust',
+  '0': 'persona',
 };
 
 export function CognitiveShell({
