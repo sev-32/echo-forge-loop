@@ -17,11 +17,12 @@ import { OrchestrationPanel } from '@/components/OrchestrationPanel';
 import { CognitionPanel } from '@/components/CognitionPanel';
 import { EvolutionPanel } from '@/components/EvolutionPanel';
 import { SwarmPanel } from '@/components/SwarmPanel';
+import { MissionPanel } from '@/components/MissionPanel';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   MessageSquare, Brain, Bot, BarChart3,
   Network, Activity, FlaskConical, BookOpen, PanelRightOpen, PanelRightClose,
-  History, Database, ShieldCheck, Workflow, GitBranch, Layers
+  History, Database, ShieldCheck, Workflow, GitBranch, Layers, Target
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -45,6 +46,7 @@ export default function Dashboard() {
               { value: 'chat', icon: MessageSquare, label: 'Chat' },
               { value: 'history', icon: History, label: 'Runs' },
               { value: 'memory', icon: Database, label: 'Memory' },
+              { value: 'missions', icon: Target, label: 'Missions' },
               { value: 'trust', icon: ShieldCheck, label: 'Trust' },
               { value: 'orchestration', icon: Workflow, label: 'APOE' },
               { value: 'knowledge', icon: Network, label: 'Evidence' },
@@ -82,6 +84,7 @@ export default function Dashboard() {
           {activeTab === 'chat' && <AIMChat />}
           {activeTab === 'history' && <RunHistoryPanel />}
           {activeTab === 'memory' && <MemoryPanel />}
+          {activeTab === 'missions' && <MissionPanel />}
           {activeTab === 'trust' && <TrustPanel />}
           {activeTab === 'orchestration' && <OrchestrationPanel />}
           {activeTab === 'knowledge' && <KnowledgeGraphPanel />}
