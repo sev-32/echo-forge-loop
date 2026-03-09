@@ -186,6 +186,29 @@ export function useEvents() {
   };
 }
 
+// Hook for system events (live feed format)
+export function useSystemEvents() {
+  const [events, setEvents] = useState<{ type: string; content: string; timestamp: Date }[]>([]);
+
+  useEffect(() => {
+    const refresh = () => {
+      const rawEvents = eventStore.getEvents();
+      setEvents(
+        rawEvents.slice(-100).map((e) => ({
+          type: e.event_type,
+          content: typeof e.payload === 'string' ? e.payload : JSON.stringify(e.payload).slice(0, 100),
+          timestamp: new Date(e.created_at),
+        }))
+      );
+    };
+    refresh();
+    const interval = setInterval(refresh, 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return events;
+}
+
 // Hook for budget state
 export function useBudget() {
   const [budgetState, setBudgetState] = useState<BudgetState>(governor.getBudgetState());
