@@ -16,11 +16,12 @@ import { TrustPanel } from '@/components/TrustPanel';
 import { OrchestrationPanel } from '@/components/OrchestrationPanel';
 import { CognitionPanel } from '@/components/CognitionPanel';
 import { EvolutionPanel } from '@/components/EvolutionPanel';
+import { SwarmPanel } from '@/components/SwarmPanel';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   MessageSquare, Brain, Bot, BarChart3,
   Network, Activity, FlaskConical, BookOpen, PanelRightOpen, PanelRightClose,
-  History, Database, ShieldCheck, Workflow, GitBranch
+  History, Database, ShieldCheck, Workflow, GitBranch, Layers
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
