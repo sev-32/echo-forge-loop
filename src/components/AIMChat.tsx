@@ -1291,10 +1291,10 @@ export function AIMChat() {
         )}
       </div>
 
-      <div className="border-t border-border p-3 bg-card/80 backdrop-blur-sm">
+      <div className="border-t border-border p-3 surface-well">
         <div className="flex items-end gap-2 max-w-4xl mx-auto">
           {messages.length > 0 && (
-            <Button variant="ghost" size="icon" onClick={() => setMessages([])} className="flex-shrink-0 h-10 w-10 text-muted-foreground hover:text-foreground" title="New conversation">
+            <Button variant="ghost" size="icon" onClick={() => setMessages([])} className="flex-shrink-0 h-10 w-10 rail-icon" title="New conversation">
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
@@ -1306,12 +1306,12 @@ export function AIMChat() {
               placeholder={isRunning ? "AIM-OS is executing..." : "Describe your goal..."}
               rows={1}
               disabled={isRunning}
-              className="w-full resize-none bg-secondary border border-border rounded-lg px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 disabled:opacity-50 transition-all"
+              className="w-full resize-none surface-well rounded px-4 py-2.5 text-sm text-label-primary placeholder:text-label-engraved focus:outline-none focus:amber-ring disabled:opacity-50 transition-all font-mono"
               style={{ minHeight: '42px', maxHeight: '120px' }}
               onInput={(e) => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px'; }}
             />
           </div>
-          <Button onClick={() => executeGoal(input)} disabled={isRunning || !input.trim()} size="icon" className="flex-shrink-0 h-10 w-10">
+          <Button onClick={() => executeGoal(input)} disabled={isRunning || !input.trim()} size="icon" className="flex-shrink-0 h-10 w-10 control-button-primary">
             {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
