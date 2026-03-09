@@ -115,9 +115,9 @@ export function MissionPanel() {
       return;
     }
     
-    setMissions((data || []) as Mission[]);
+    setMissions((data || []) as unknown as Mission[]);
     if (data && data.length > 0 && !selectedMission) {
-      setSelectedMission(data[0] as Mission);
+      setSelectedMission(data[0] as unknown as Mission);
     }
   };
 
