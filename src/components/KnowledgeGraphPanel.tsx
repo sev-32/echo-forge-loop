@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -112,6 +113,7 @@ export function KnowledgeGraphPanel() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+  useRealtimeRefresh(loadData, { tables: ['knowledge_nodes', 'knowledge_edges', 'contradictions'], debounceMs: 1500 });
 
   const layoutNodes = useMemo(() => nodes.length === 0 ? [] : forceLayout(nodes, edges, W, H), [nodes, edges]);
   const nodeMap = useMemo(() => new Map(layoutNodes.map(n => [n.id, n])), [layoutNodes]);

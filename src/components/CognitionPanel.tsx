@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { cas, type CognitiveSnapshot, type FailureMode } from '@/lib/cas';
+import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -51,6 +52,7 @@ export function CognitionPanel() {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+  useRealtimeRefresh(refresh, { tables: ['cognitive_snapshots'], debounceMs: 800 });
 
   // Sparkline data from snapshots
   const loadTrend = useMemo(() => snapshots.slice(-20).map(s => s.cognitive_load * 100).reverse(), [snapshots]);

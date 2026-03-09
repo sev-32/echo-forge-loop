@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { cmc, type Atom, type MemorySnapshot, type AtomType } from '@/lib/cmc';
+import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -54,6 +55,7 @@ export function MemoryPanel() {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+  useRealtimeRefresh(refresh, { tables: ['atoms', 'memory_snapshots'], debounceMs: 1000 });
 
   const filteredAtoms = filterType === 'all' ? atoms : atoms.filter(a => a.atom_type === filterType);
 

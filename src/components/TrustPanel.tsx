@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { vif, type WitnessEnvelope, type ConfidenceBand, type KappaGateResult } from '@/lib/vif';
+import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -50,6 +51,7 @@ export function TrustPanel() {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+  useRealtimeRefresh(refresh, { tables: ['witness_envelopes', 'ece_tracking'], debounceMs: 1000 });
 
   // Confidence trend sparkline
   const confTrend = useMemo(() => 

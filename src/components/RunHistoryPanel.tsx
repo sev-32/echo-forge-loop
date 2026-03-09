@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
 import {
   Brain, ChevronDown, ChevronRight, Clock, Zap, Target, Shield, Sparkles,
   TrendingUp, Database, RefreshCw, CheckCircle2, XCircle, BarChart3,
@@ -342,7 +343,7 @@ export function RunHistoryPanel() {
   const [selectedRun, setSelectedRun] = useState<RunTrace | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchRuns = async () => {
+  const fetchRuns = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('run_traces')
@@ -354,9 +355,10 @@ export function RunHistoryPanel() {
       if (data.length > 0 && !selectedRun) setSelectedRun(data[0] as unknown as RunTrace);
     }
     setLoading(false);
-  };
+  }, [selectedRun]);
 
   useEffect(() => { fetchRuns(); }, []);
+  useRealtimeRefresh(fetchRuns, { tables: ['run_traces'], debounceMs: 1000 });
 
   return (
     <div className="flex flex-col h-full gap-3 p-3">
