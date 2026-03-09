@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import aimosLogo from '@/assets/aimos-logo.png';
 import ReactMarkdown from 'react-markdown';
 // @ts-ignore - no type declarations available
 import remarkGfm from 'remark-gfm';
