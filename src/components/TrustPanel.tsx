@@ -51,6 +51,7 @@ export function TrustPanel() {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+  useRealtimeRefresh(refresh, { tables: ['witness_envelopes', 'ece_tracking'], debounceMs: 1000 });
 
   // Confidence trend sparkline
   const confTrend = useMemo(() => 

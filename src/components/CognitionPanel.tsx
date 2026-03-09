@@ -52,6 +52,7 @@ export function CognitionPanel() {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+  useRealtimeRefresh(refresh, { tables: ['cognitive_snapshots'], debounceMs: 800 });
 
   // Sparkline data from snapshots
   const loadTrend = useMemo(() => snapshots.slice(-20).map(s => s.cognitive_load * 100).reverse(), [snapshots]);

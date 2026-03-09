@@ -55,6 +55,7 @@ export function MemoryPanel() {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+  useRealtimeRefresh(refresh, { tables: ['atoms', 'memory_snapshots'], debounceMs: 1000 });
 
   const filteredAtoms = filterType === 'all' ? atoms : atoms.filter(a => a.atom_type === filterType);
 
