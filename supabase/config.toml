@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.aim-chat]
 verify_jwt = false
+
+[functions.deep-research]
+verify_jwt = false

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CognitiveShell } from '@/components/shell/CognitiveShell';
 import { PanelErrorBoundary } from '@/components/shell/ErrorBoundary';
 import { AIMChat } from '@/components/AIMChat';
+import { DeepResearchPanel } from '@/components/DeepResearchPanel';
 import { RunHistoryPanel } from '@/components/RunHistoryPanel';
 import { MemoryPanel } from '@/components/MemoryPanel';
 import { MissionPanel } from '@/components/MissionPanel';
@@ -27,6 +28,9 @@ export default function Dashboard() {
       <div className="h-full overflow-auto">
         <PanelErrorBoundary fallbackTitle="Chat">
           {activeTab === 'chat' && <AIMChat />}
+        </PanelErrorBoundary>
+        <PanelErrorBoundary fallbackTitle="Deep Research">
+          {activeTab === 'research' && <DeepResearchPanel />}
         </PanelErrorBoundary>
         <PanelErrorBoundary fallbackTitle="Run History">
           {activeTab === 'runs' && <RunHistoryPanel />}
