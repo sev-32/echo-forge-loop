@@ -1,36 +1,39 @@
 import { 
-  MessageSquare, 
-  History, 
-  Database, 
-  Target, 
-  Network,
-  BookOpen,
-  Brain,
-  Shield,
-  Settings,
-  Activity,
-  Hexagon
-} from "lucide-react";
+  IconIntelligence,
+  IconMission,
+  IconSwarm,
+  IconHistory,
+  IconMemory,
+  IconJournal,
+  IconCognitive,
+  IconKnowledge,
+  IconTrust,
+  IconSettings,
+  IconHexagon
+} from "@/components/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ComponentType, SVGProps } from "react";
+
+type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
 
 interface RailItem {
   id: string;
-  icon: typeof MessageSquare;
+  icon: IconComponent;
   label: string;
   shortcut?: string;
   section?: 'primary' | 'secondary';
 }
 
 const railItems: RailItem[] = [
-  { id: 'chat', icon: MessageSquare, label: 'Intelligence', shortcut: '1', section: 'primary' },
-  { id: 'missions', icon: Target, label: 'Missions', shortcut: '2', section: 'primary' },
-  { id: 'swarm', icon: Network, label: 'Swarm', shortcut: '3', section: 'primary' },
-  { id: 'runs', icon: History, label: 'Run History', shortcut: '4', section: 'secondary' },
-  { id: 'memory', icon: Database, label: 'Memory Fabric', shortcut: '5', section: 'secondary' },
-  { id: 'journal', icon: BookOpen, label: 'Journal', shortcut: '6', section: 'secondary' },
-  { id: 'cognition', icon: Brain, label: 'Cognition', shortcut: '7', section: 'secondary' },
-  { id: 'knowledge', icon: Activity, label: 'Evidence Graph', shortcut: '8', section: 'secondary' },
-  { id: 'trust', icon: Shield, label: 'Trust & Audit', shortcut: '9', section: 'secondary' },
+  { id: 'chat', icon: IconIntelligence, label: 'Intelligence', shortcut: '1', section: 'primary' },
+  { id: 'missions', icon: IconMission, label: 'Missions', shortcut: '2', section: 'primary' },
+  { id: 'swarm', icon: IconSwarm, label: 'Swarm', shortcut: '3', section: 'primary' },
+  { id: 'runs', icon: IconHistory, label: 'Run History', shortcut: '4', section: 'secondary' },
+  { id: 'memory', icon: IconMemory, label: 'Memory Fabric', shortcut: '5', section: 'secondary' },
+  { id: 'journal', icon: IconJournal, label: 'Journal', shortcut: '6', section: 'secondary' },
+  { id: 'cognition', icon: IconCognitive, label: 'Cognition', shortcut: '7', section: 'secondary' },
+  { id: 'knowledge', icon: IconKnowledge, label: 'Evidence Graph', shortcut: '8', section: 'secondary' },
+  { id: 'trust', icon: IconTrust, label: 'Trust & Audit', shortcut: '9', section: 'secondary' },
 ];
 
 interface LeftRailProps {
@@ -46,7 +49,7 @@ export function LeftRail({ activeTab, onTabChange }: LeftRailProps) {
     <nav className="shell-left-rail">
       {/* System Mark */}
       <div className="w-8 h-8 rounded surface-bezel flex items-center justify-center mb-2">
-        <Hexagon className="w-4 h-4 text-primary" />
+        <IconHexagon className="w-4 h-4 text-primary" />
       </div>
 
       {/* Primary Nav */}
@@ -71,7 +74,7 @@ export function LeftRail({ activeTab, onTabChange }: LeftRailProps) {
         <Tooltip delayDuration={100}>
           <TooltipTrigger asChild>
             <button className="rail-icon">
-              <Settings className="w-4 h-4" />
+              <IconSettings className="w-4 h-4" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="right" className="surface-float border-border text-label-primary text-xs">
@@ -84,6 +87,7 @@ export function LeftRail({ activeTab, onTabChange }: LeftRailProps) {
 }
 
 function RailButton({ item, isActive, onClick }: { item: RailItem; isActive: boolean; onClick: () => void }) {
+  const Icon = item.icon;
   return (
     <Tooltip delayDuration={100}>
       <TooltipTrigger asChild>
@@ -91,7 +95,7 @@ function RailButton({ item, isActive, onClick }: { item: RailItem; isActive: boo
           onClick={onClick}
           className={`rail-icon ${isActive ? 'active' : ''}`}
         >
-          <item.icon className="w-4 h-4" />
+          <Icon className="w-4 h-4" />
         </button>
       </TooltipTrigger>
       <TooltipContent side="right" className="surface-float border-border flex items-center gap-2">
