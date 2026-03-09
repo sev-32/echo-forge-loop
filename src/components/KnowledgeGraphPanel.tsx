@@ -1,18 +1,16 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Network, RefreshCw, ZoomIn, ZoomOut, Maximize2, AlertTriangle, CheckCircle2, Scale, Shield } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { GaugeRadial, StatusBadge } from '@/components/ui/instruments';
+import { Network, RefreshCw, ZoomIn, ZoomOut, Maximize2, AlertTriangle, CheckCircle2, Shield } from 'lucide-react';
 import { seg, type EvidenceNode, type EvidenceEdge, type Contradiction } from '@/lib/seg';
 
 // ─── Layout types ────────────────────────────────────
 interface LayoutNode extends EvidenceNode {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
+  x: number; y: number; vx: number; vy: number;
 }
 
 // ─── Colors ──────────────────────────────────────────
@@ -30,8 +28,8 @@ const typeColors: Record<string, string> = {
 };
 
 const stanceColors: Record<string, string> = {
-  contradicts: 'hsl(0, 85%, 60%)',
-  weakly_contradicts: 'hsl(38, 92%, 55%)',
+  contradicts: 'hsl(var(--status-error))',
+  weakly_contradicts: 'hsl(var(--status-warning))',
   tension: 'hsl(45, 90%, 50%)',
 };
 
@@ -98,7 +96,6 @@ export function KnowledgeGraphPanel() {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [tab, setTab] = useState('graph');
   const [resolving, setResolving] = useState(false);
-  const svgRef = useRef<SVGSVGElement>(null);
   const dragging = useRef(false);
   const lastMouse = useRef({ x: 0, y: 0 });
 
@@ -107,39 +104,29 @@ export function KnowledgeGraphPanel() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [graph, contras] = await Promise.all([
-        seg.getFullGraph(),
-        seg.getContradictions(),
-      ]);
+      const [graph, contras] = await Promise.all([seg.getFullGraph(), seg.getContradictions()]);
       setNodes(graph.nodes);
       setEdges(graph.edges);
       setContradictions(contras);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const layoutNodes = useMemo(() => {
-    if (nodes.length === 0) return [];
-    return forceLayout(nodes, edges, W, H);
-  }, [nodes, edges]);
-
+  const layoutNodes = useMemo(() => nodes.length === 0 ? [] : forceLayout(nodes, edges, W, H), [nodes, edges]);
   const nodeMap = useMemo(() => new Map(layoutNodes.map(n => [n.id, n])), [layoutNodes]);
   const nodeById = useMemo(() => new Map(nodes.map(n => [n.id, n])), [nodes]);
 
-  // Contradiction node IDs for highlighting
   const contradictionNodeIds = useMemo(() => {
     const ids = new Set<string>();
-    contradictions.filter(c => !c.resolution).forEach(c => {
-      ids.add(c.node_a_id);
-      ids.add(c.node_b_id);
-    });
+    contradictions.filter(c => !c.resolution).forEach(c => { ids.add(c.node_a_id); ids.add(c.node_b_id); });
     return ids;
   }, [contradictions]);
 
   const unresolvedCount = contradictions.filter(c => !c.resolution).length;
+  const avgConfidence = nodes.length > 0 ? (nodes.reduce((s, n) => s + n.confidence, 0) / nodes.length) * 100 : 0;
+
+  const connectedEdges = selectedNode ? edges.filter(e => e.source_id === selectedNode.id || e.target_id === selectedNode.id) : [];
 
   const handleMouseDown = (e: React.MouseEvent) => { dragging.current = true; lastMouse.current = { x: e.clientX, y: e.clientY }; };
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -148,8 +135,6 @@ export function KnowledgeGraphPanel() {
     lastMouse.current = { x: e.clientX, y: e.clientY };
   };
   const handleMouseUp = () => { dragging.current = false; };
-
-  const connectedEdges = selectedNode ? edges.filter(e => e.source_id === selectedNode.id || e.target_id === selectedNode.id) : [];
 
   async function handleResolve(c: Contradiction, resolution: string, reasoning: string) {
     setResolving(true);
@@ -164,46 +149,56 @@ export function KnowledgeGraphPanel() {
       {/* Header */}
       <div className="p-3 border-b border-border flex items-center gap-2">
         <Network className="h-4 w-4 text-primary" />
-        <span className="font-semibold text-sm">Evidence Graph (SEG)</span>
-        <Badge variant="outline" className="text-[10px]">{nodes.length} nodes • {edges.length} edges</Badge>
+        <span className="text-[10px] font-mono font-bold text-label-primary tracking-widest uppercase">Evidence Graph</span>
+        <Badge variant="outline" className="text-[9px] font-mono">{nodes.length} nodes · {edges.length} edges</Badge>
         {unresolvedCount > 0 && (
-          <Badge variant="destructive" className="text-[10px] gap-1">
+          <Badge variant="destructive" className="text-[9px] gap-1">
             <AlertTriangle className="h-3 w-3" /> {unresolvedCount} conflict{unresolvedCount > 1 ? 's' : ''}
           </Badge>
         )}
-        <div className="ml-auto flex items-center gap-1">
-          <Button size="sm" variant="ghost" onClick={() => setZoom(z => Math.min(z + 0.2, 3))} className="h-7 w-7 p-0"><ZoomIn className="h-3 w-3" /></Button>
-          <Button size="sm" variant="ghost" onClick={() => setZoom(z => Math.max(z - 0.2, 0.3))} className="h-7 w-7 p-0"><ZoomOut className="h-3 w-3" /></Button>
-          <Button size="sm" variant="ghost" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} className="h-7 w-7 p-0"><Maximize2 className="h-3 w-3" /></Button>
-          <Button size="sm" variant="ghost" onClick={loadData} disabled={loading} className="h-7 gap-1 text-xs">
-            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
+
+        {/* Mini gauges in header */}
+        <div className="ml-auto flex items-center gap-3">
+          <GaugeRadial value={avgConfidence} label="CONF" size={36} strokeWidth={2.5} showTicks={false} />
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="ghost" onClick={() => setZoom(z => Math.min(z + 0.2, 3))} className="h-7 w-7 p-0"><ZoomIn className="h-3 w-3" /></Button>
+            <Button size="sm" variant="ghost" onClick={() => setZoom(z => Math.max(z - 0.2, 0.3))} className="h-7 w-7 p-0"><ZoomOut className="h-3 w-3" /></Button>
+            <Button size="sm" variant="ghost" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} className="h-7 w-7 p-0"><Maximize2 className="h-3 w-3" /></Button>
+            <Button size="sm" variant="ghost" onClick={loadData} disabled={loading} className="h-7 w-7 p-0">
+              <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
       </div>
 
       <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
         <TabsList className="mx-3 mt-2 w-fit">
-          <TabsTrigger value="graph" className="text-xs gap-1"><Network className="h-3 w-3" />Graph</TabsTrigger>
-          <TabsTrigger value="contradictions" className="text-xs gap-1">
+          <TabsTrigger value="graph" className="text-[10px] gap-1"><Network className="h-3 w-3" />Graph</TabsTrigger>
+          <TabsTrigger value="contradictions" className="text-[10px] gap-1">
             <AlertTriangle className="h-3 w-3" />Contradictions
-            {unresolvedCount > 0 && <Badge variant="destructive" className="text-[9px] px-1 py-0 ml-1">{unresolvedCount}</Badge>}
+            {unresolvedCount > 0 && <Badge variant="destructive" className="text-[8px] px-1 py-0 ml-1">{unresolvedCount}</Badge>}
           </TabsTrigger>
         </TabsList>
 
         {/* ═══ GRAPH TAB ═══ */}
         <TabsContent value="graph" className="flex-1 flex min-h-0 mt-0">
           <div className="flex-1 flex min-h-0">
-            {/* Graph Canvas */}
             <div className="flex-1 bg-background overflow-hidden cursor-grab active:cursor-grabbing"
               onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
               {nodes.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
-                  No knowledge graph data yet. Run tasks with AI reflection to build the graph.
+                <div className="h-full flex items-center justify-center text-[10px] text-label-muted font-mono">
+                  NO GRAPH DATA — RUN TASKS TO BUILD KNOWLEDGE
                 </div>
               ) : (
-                <svg ref={svgRef} width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} className="select-none">
+                <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} className="select-none">
+                  <defs>
+                    <filter id="node-glow">
+                      <feGaussianBlur stdDeviation="3" result="blur" />
+                      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                    </filter>
+                  </defs>
                   <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-                    {/* Contradiction links (dashed red) */}
+                    {/* Contradiction links */}
                     {contradictions.filter(c => !c.resolution).map(c => {
                       const a = nodeMap.get(c.node_a_id);
                       const b = nodeMap.get(c.node_b_id);
@@ -224,13 +219,15 @@ export function KnowledgeGraphPanel() {
                       return (
                         <g key={e.id}>
                           <line x1={s.x} y1={s.y} x2={t.x} y2={t.y}
-                            stroke={isContraEdge ? 'hsl(0, 85%, 60%)' : isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--border))'}
+                            stroke={isContraEdge ? 'hsl(var(--status-error))' : isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--border))'}
                             strokeWidth={isHighlighted ? 2 : 1} strokeOpacity={isHighlighted ? 0.9 : 0.4}
                             strokeDasharray={isContraEdge ? '4 2' : undefined} />
-                          <text x={(s.x + t.x) / 2} y={(s.y + t.y) / 2 - 4}
-                            fill="hsl(var(--muted-foreground))" fontSize={8} textAnchor="middle" opacity={isHighlighted ? 1 : 0.3}>
-                            {e.relation}
-                          </text>
+                          {isHighlighted && (
+                            <text x={(s.x + t.x) / 2} y={(s.y + t.y) / 2 - 4}
+                              fill="hsl(var(--muted-foreground))" fontSize={8} textAnchor="middle" opacity={0.8}>
+                              {e.relation}
+                            </text>
+                          )}
                         </g>
                       );
                     })}
@@ -239,19 +236,26 @@ export function KnowledgeGraphPanel() {
                       const isSelected = selectedNode?.id === n.id;
                       const isConnected = selectedNode && connectedEdges.some(e => e.source_id === n.id || e.target_id === n.id);
                       const isContradicted = contradictionNodeIds.has(n.id);
-                      const opacity = selectedNode ? (isSelected || isConnected ? 1 : 0.25) : 1;
+                      const opacity = selectedNode ? (isSelected || isConnected ? 1 : 0.2) : 1;
+                      const nodeColor = getColor(n.node_type);
                       return (
                         <g key={n.id} onClick={(e) => { e.stopPropagation(); setSelectedNode(isSelected ? null : n); }} className="cursor-pointer">
+                          {/* Glow ring for selected */}
+                          {isSelected && (
+                            <circle cx={n.x} cy={n.y} r={16} fill={nodeColor} opacity={0.15} filter="url(#node-glow)" />
+                          )}
                           {/* Contradiction ring */}
                           {isContradicted && (
                             <circle cx={n.x} cy={n.y} r={isSelected ? 14 : 11}
-                              fill="none" stroke="hsl(0, 85%, 60%)" strokeWidth={2}
+                              fill="none" stroke="hsl(var(--status-error))" strokeWidth={2}
                               strokeDasharray="3 2" opacity={0.8} />
                           )}
+                          {/* Main node */}
                           <circle cx={n.x} cy={n.y} r={isSelected ? 10 : 7}
-                            fill={getColor(n.node_type)} opacity={opacity}
-                            stroke={isSelected ? 'hsl(var(--foreground))' : 'none'} strokeWidth={2} />
-                          {/* Confidence indicator */}
+                            fill={nodeColor} opacity={opacity}
+                            stroke={isSelected ? 'hsl(var(--foreground))' : 'none'} strokeWidth={2}
+                            style={isSelected ? { filter: `drop-shadow(0 0 4px ${nodeColor})` } : undefined} />
+                          {/* Confidence arc */}
                           {n.confidence > 0 && (
                             <circle cx={n.x} cy={n.y} r={isSelected ? 10 : 7}
                               fill="none" stroke="hsl(var(--foreground))" strokeWidth={1}
@@ -274,45 +278,40 @@ export function KnowledgeGraphPanel() {
             {selectedNode && (
               <div className="w-56 border-l border-border bg-card p-3 space-y-3">
                 <div>
-                  <h3 className="text-xs font-bold truncate">{selectedNode.label}</h3>
+                  <h3 className="text-[10px] font-mono font-bold text-label-primary truncate">{selectedNode.label}</h3>
                   <div className="flex items-center gap-1 mt-1 flex-wrap">
-                    <Badge variant="outline" className="text-[10px]" style={{ borderColor: getColor(selectedNode.node_type), color: getColor(selectedNode.node_type) }}>
-                      {selectedNode.node_type}
-                    </Badge>
-                    <Badge variant="outline" className="text-[10px]">{selectedNode.evidence_type}</Badge>
+                    <StatusBadge status={selectedNode.node_type} />
+                    <Badge variant="outline" className="text-[8px] h-4">{selectedNode.evidence_type}</Badge>
                     {selectedNode.confidence > 0 && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        conf: {(selectedNode.confidence * 100).toFixed(0)}%
+                      <Badge variant="secondary" className="text-[8px] h-4">
+                        {(selectedNode.confidence * 100).toFixed(0)}%
                       </Badge>
                     )}
                   </div>
                   {contradictionNodeIds.has(selectedNode.id) && (
-                    <Badge variant="destructive" className="text-[10px] mt-1 gap-1">
-                      <AlertTriangle className="h-2.5 w-2.5" /> Has contradictions
+                    <Badge variant="destructive" className="text-[8px] mt-1 gap-1">
+                      <AlertTriangle className="h-2.5 w-2.5" /> Contradicted
                     </Badge>
                   )}
-                  <p className="text-[10px] text-muted-foreground mt-1">{new Date(selectedNode.created_at).toLocaleString()}</p>
                 </div>
 
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Connections ({connectedEdges.length})</p>
+                  <p className="text-[9px] text-label-muted uppercase mb-1 font-mono">Connections ({connectedEdges.length})</p>
                   <ScrollArea className="max-h-[200px]">
                     {connectedEdges.map(e => {
                       const other = e.source_id === selectedNode.id ? nodeMap.get(e.target_id) : nodeMap.get(e.source_id);
                       return (
-                        <div key={e.id} className="text-[10px] py-1 border-b border-border/50">
-                          <Badge variant={e.edge_type === 'contradicts' ? 'destructive' : 'outline'} className="text-[9px] px-1 py-0">
-                            {e.edge_type}
-                          </Badge>
-                          <span className="ml-1 text-muted-foreground">{e.relation}</span>
-                          <span className="ml-1 text-foreground">{other?.label || 'unknown'}</span>
+                        <div key={e.id} className="text-[9px] py-1 border-b border-border/50">
+                          <StatusBadge status={e.edge_type === 'contradicts' ? 'fail' : 'active'} size="sm" />
+                          <span className="ml-1 text-label-muted">{e.relation}</span>
+                          <span className="ml-1 text-label-primary">{other?.label || '?'}</span>
                         </div>
                       );
                     })}
                   </ScrollArea>
                 </div>
 
-                <Button size="sm" variant="ghost" onClick={() => setSelectedNode(null)} className="w-full h-6 text-[10px]">Close</Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelectedNode(null)} className="w-full h-6 text-[9px] font-mono">CLOSE</Button>
               </div>
             )}
           </div>
@@ -323,17 +322,16 @@ export function KnowledgeGraphPanel() {
           <ScrollArea className="h-full">
             <div className="p-3 space-y-2">
               {contradictions.length === 0 ? (
-                <div className="text-center py-12 text-xs text-muted-foreground">
+                <div className="text-center py-12 text-[10px] text-label-muted font-mono">
                   <Shield className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  No contradictions detected yet. As the knowledge graph grows, semantic conflicts will surface here.
+                  NO CONTRADICTIONS DETECTED
                 </div>
               ) : (
                 <>
-                  {/* Unresolved first */}
                   {contradictions.filter(c => !c.resolution).length > 0 && (
                     <div className="mb-3">
-                      <h3 className="text-xs font-semibold text-destructive flex items-center gap-1 mb-2">
-                        <AlertTriangle className="h-3 w-3" /> Unresolved ({contradictions.filter(c => !c.resolution).length})
+                      <h3 className="text-[10px] font-mono font-semibold text-status-error flex items-center gap-1 mb-2">
+                        <AlertTriangle className="h-3 w-3" /> UNRESOLVED ({contradictions.filter(c => !c.resolution).length})
                       </h3>
                       {contradictions.filter(c => !c.resolution).map(c => (
                         <ContradictionCard key={c.id} contradiction={c} nodeById={nodeById}
@@ -343,11 +341,10 @@ export function KnowledgeGraphPanel() {
                       ))}
                     </div>
                   )}
-                  {/* Resolved */}
                   {contradictions.filter(c => c.resolution).length > 0 && (
                     <div>
-                      <h3 className="text-xs font-semibold text-muted-foreground flex items-center gap-1 mb-2">
-                        <CheckCircle2 className="h-3 w-3" /> Resolved ({contradictions.filter(c => c.resolution).length})
+                      <h3 className="text-[10px] font-mono font-semibold text-label-muted flex items-center gap-1 mb-2">
+                        <CheckCircle2 className="h-3 w-3" /> RESOLVED ({contradictions.filter(c => c.resolution).length})
                       </h3>
                       {contradictions.filter(c => c.resolution).map(c => (
                         <ContradictionCard key={c.id} contradiction={c} nodeById={nodeById}
@@ -363,28 +360,11 @@ export function KnowledgeGraphPanel() {
           </ScrollArea>
         </TabsContent>
       </Tabs>
-
-      {/* Legend */}
-      <div className="px-3 py-1.5 border-t border-border flex items-center gap-4 flex-wrap">
-        {Object.entries(typeColors).filter(([k]) => k !== 'default').map(([type, color]) => (
-          <div key={type} className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-            <span className="text-[10px] text-muted-foreground capitalize">{type}</span>
-          </div>
-        ))}
-        <div className="flex items-center gap-1 ml-2">
-          <div className="w-4 h-0 border-t-2 border-dashed border-destructive" />
-          <span className="text-[10px] text-muted-foreground">contradiction</span>
-        </div>
-      </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════
-// CONTRADICTION CARD
-// ═══════════════════════════════════════════════════════
-
+// ─── Contradiction Card ──────────────────────────────
 function ContradictionCard({ contradiction: c, nodeById, selected, onSelect, onResolve, resolving }: {
   contradiction: Contradiction;
   nodeById: Map<string, EvidenceNode>;
@@ -396,81 +376,35 @@ function ContradictionCard({ contradiction: c, nodeById, selected, onSelect, onR
   const [reasoning, setReasoning] = useState('');
   const nodeA = nodeById.get(c.node_a_id);
   const nodeB = nodeById.get(c.node_b_id);
-  const meta = c.metadata as any;
 
   return (
-    <Card className={`mb-2 cursor-pointer transition-all ${selected ? 'ring-1 ring-primary' : ''} ${!c.resolution ? 'border-destructive/30' : 'opacity-70'}`}
+    <div className={`p-2 rounded border transition-colors cursor-pointer mb-1.5 ${selected ? 'border-primary bg-primary/5' : 'border-border/50 bg-card/50 hover:bg-card'}`}
       onClick={onSelect}>
-      <CardContent className="p-3 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Badge variant={!c.resolution ? 'destructive' : 'secondary'} className="text-[9px] px-1.5 py-0">
-                {c.stance.replace('_', ' ')}
-              </Badge>
-              <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                sim: {(c.similarity_score * 100).toFixed(0)}%
-              </Badge>
-              <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                {c.detection_method}
-              </Badge>
-            </div>
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-1 items-center">
-              <div className="text-[11px] font-medium truncate" title={nodeA?.label || meta?.node_a_label}>
-                {nodeA?.label || meta?.node_a_label || c.node_a_id.slice(0, 8)}
-              </div>
-              <Scale className="h-3 w-3 text-muted-foreground" />
-              <div className="text-[11px] font-medium truncate text-right" title={nodeB?.label || meta?.node_b_label}>
-                {nodeB?.label || meta?.node_b_label || c.node_b_id.slice(0, 8)}
-              </div>
-            </div>
-            {nodeA && nodeB && (
-              <div className="grid grid-cols-[1fr_auto_1fr] gap-1 mt-0.5">
-                <span className="text-[9px] text-muted-foreground">conf: {((nodeA.confidence ?? 0) * 100).toFixed(0)}%</span>
-                <span />
-                <span className="text-[9px] text-muted-foreground text-right">conf: {((nodeB.confidence ?? 0) * 100).toFixed(0)}%</span>
-              </div>
-            )}
+      <div className="flex items-center gap-1.5 mb-1">
+        <StatusBadge status={c.resolution ? 'done' : c.stance === 'contradicts' ? 'error' : 'warning'} size="sm" />
+        <span className="text-[9px] font-mono text-label-muted">sim: {(c.similarity_score * 100).toFixed(0)}%</span>
+        {c.resolution && <Badge variant="outline" className="text-[8px] h-4 ml-auto">{c.resolution}</Badge>}
+      </div>
+      <div className="text-[9px] space-y-0.5">
+        <div><span className="text-label-muted font-mono">A:</span> <span className="text-label-primary">{nodeA?.label || c.node_a_id.slice(0, 8)}</span></div>
+        <div><span className="text-label-muted font-mono">B:</span> <span className="text-label-primary">{nodeB?.label || c.node_b_id.slice(0, 8)}</span></div>
+      </div>
+
+      {selected && !c.resolution && (
+        <div className="mt-2 space-y-1.5" onClick={e => e.stopPropagation()}>
+          <Textarea value={reasoning} onChange={e => setReasoning(e.target.value)}
+            placeholder="Resolution reasoning…" className="text-[10px] h-14 resize-none bg-background" />
+          <div className="flex gap-1">
+            {['a_wins', 'b_wins', 'both_valid', 'merged'].map(r => (
+              <Button key={r} size="sm" variant="outline" disabled={resolving || !reasoning}
+                onClick={() => onResolve(c, r, reasoning)}
+                className="text-[8px] h-5 px-1.5 font-mono">
+                {r.replace('_', ' ')}
+              </Button>
+            ))}
           </div>
         </div>
-
-        {c.resolution && (
-          <div className="bg-secondary/50 rounded p-1.5">
-            <Badge variant="secondary" className="text-[9px]">{c.resolution.replace('_', ' ')}</Badge>
-            {c.resolution_reasoning && (
-              <p className="text-[9px] text-muted-foreground mt-0.5">{c.resolution_reasoning}</p>
-            )}
-          </div>
-        )}
-
-        {/* Resolution controls */}
-        {selected && !c.resolution && (
-          <div className="space-y-1.5 pt-1 border-t border-border" onClick={e => e.stopPropagation()}>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase">Resolve</p>
-            <textarea
-              className="w-full text-[10px] bg-background border border-border rounded p-1.5 resize-none h-12"
-              placeholder="Resolution reasoning..."
-              value={reasoning}
-              onChange={e => setReasoning(e.target.value)}
-            />
-            <div className="flex gap-1 flex-wrap">
-              {[
-                { value: 'a_wins', label: 'A wins', variant: 'outline' as const },
-                { value: 'b_wins', label: 'B wins', variant: 'outline' as const },
-                { value: 'both_valid', label: 'Both valid', variant: 'secondary' as const },
-                { value: 'merged', label: 'Merge', variant: 'default' as const },
-              ].map(opt => (
-                <Button key={opt.value} size="sm" variant={opt.variant}
-                  className="h-6 text-[10px] px-2"
-                  disabled={resolving}
-                  onClick={() => onResolve(c, opt.value, reasoning || `Resolved as ${opt.label}`)}>
-                  {opt.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }
