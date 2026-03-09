@@ -1188,15 +1188,15 @@ export function AIMChat() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); executeGoal(input); }
   };
 
-  // ─── ACTIVE RUN: Mission Control ──────────────────────
+  // ─── ACTIVE RUN: Mission Control (Hasselblad) ──────────
   if (showMissionControl && activeRun) {
     return (
       <div className="flex flex-col h-full bg-background">
         <MissionControl runData={activeRun} />
-        <div className="border-t border-border p-2 bg-card/80 backdrop-blur-sm">
-          <div className="flex items-center gap-2 max-w-4xl mx-auto text-[10px] text-muted-foreground">
+        <div className="border-t border-border p-2 surface-well">
+          <div className="flex items-center gap-2 max-w-4xl mx-auto">
             <Loader2 className="h-3 w-3 animate-spin text-primary" />
-            <span>AIM-OS is executing... watching AI consciousness in real-time</span>
+            <span className="text-engraved">AIM-OS EXECUTING • OBSERVING AI CONSCIOUSNESS</span>
           </div>
         </div>
       </div>
