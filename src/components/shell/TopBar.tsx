@@ -7,7 +7,7 @@ import {
   IconActivity,
   IconRadio
 } from "@/components/icons";
-import aimosLogo from "@/assets/aimos-logo.png";
+import { AimOSLogo } from "@/components/icons/AimOSLogo";
 
 interface TopBarProps {
   systemStatus?: 'idle' | 'active' | 'processing' | 'error';
