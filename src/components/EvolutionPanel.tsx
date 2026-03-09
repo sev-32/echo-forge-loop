@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { GaugeRadial, Sparkline, StatusBadge } from '@/components/ui/instruments';
 import { RefreshCw } from 'lucide-react';
 import {
-  IconShield, IconActivity, IconGauge, IconRadio
+  IconTrust, IconActivity, IconGauge, IconRadio
 } from '@/components/icons';
 
 const TIER_COLORS: Record<string, string> = {
