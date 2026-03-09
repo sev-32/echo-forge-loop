@@ -1099,6 +1099,9 @@ ${conversationSummary}
 
           const synthModel = plan.overall_complexity === 'research-grade' ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash";
 
+          // Synthesis with timeout to prevent hangs on complex runs
+          const synthAbort = new AbortController();
+          const synthTimeout = setTimeout(() => synthAbort.abort(), 120000); // 2 min timeout
           const synthResponse = await callAI(LOVABLE_API_KEY, synthModel, [
             {
               role: "system",
@@ -1151,6 +1154,8 @@ Patterns: ${(styleAnalysis.patterns_observed || []).join(', ')}
               }
             }
           }], { type: "function", function: { name: "synthesize_response" } });
+
+          clearTimeout(synthTimeout);
 
           if (synthResponse.ok) {
             const synthData = await synthResponse.json();
