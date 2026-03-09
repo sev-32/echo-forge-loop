@@ -307,6 +307,36 @@ export type Database = {
           },
         ]
       }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_run_id: string | null
+          messages: Json
+          title: string
+          total_tokens: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_run_id?: string | null
+          messages?: Json
+          title?: string
+          total_tokens?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_run_id?: string | null
+          messages?: Json
+          title?: string
+          total_tokens?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dora_metrics: {
         Row: {
           change_failure_rate: number
