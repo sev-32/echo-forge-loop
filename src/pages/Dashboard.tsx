@@ -46,6 +46,7 @@ export default function Dashboard() {
               { value: 'chat', icon: MessageSquare, label: 'Chat' },
               { value: 'history', icon: History, label: 'Runs' },
               { value: 'memory', icon: Database, label: 'Memory' },
+              { value: 'missions', icon: Target, label: 'Missions' },
               { value: 'trust', icon: ShieldCheck, label: 'Trust' },
               { value: 'orchestration', icon: Workflow, label: 'APOE' },
               { value: 'knowledge', icon: Network, label: 'Evidence' },
