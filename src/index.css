@@ -251,11 +251,11 @@
   }
 
   /* === STATUS PULSE === */
-  .pulse-amber {
-    animation: pulse-amber 2s ease-in-out infinite;
+  .pulse-amber, .pulse-azure {
+    animation: pulse-azure 2s ease-in-out infinite;
   }
 
-  @keyframes pulse-amber {
+  @keyframes pulse-azure {
     0%, 100% { 
       box-shadow: 0 0 4px hsl(var(--primary) / 0.4);
     }
