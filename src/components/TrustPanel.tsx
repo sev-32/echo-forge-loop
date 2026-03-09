@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { vif, type WitnessEnvelope, type ConfidenceBand, type KappaGateResult } from '@/lib/vif';
+import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
