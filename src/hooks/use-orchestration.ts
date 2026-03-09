@@ -195,9 +195,9 @@ export function useSystemEvents() {
       const rawEvents = eventStore.getEvents();
       setEvents(
         rawEvents.slice(-100).map((e) => ({
-          type: e.event_type,
+          type: e.type,
           content: typeof e.payload === 'string' ? e.payload : JSON.stringify(e.payload).slice(0, 100),
-          timestamp: new Date(e.created_at),
+          timestamp: new Date(e.timestamp),
         }))
       );
     };
