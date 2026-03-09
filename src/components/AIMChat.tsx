@@ -305,9 +305,7 @@ export function AIMChat() {
                 onInput={(e) => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px'; }}
               />
             </div>
-            <Button onClick={() => executeGoal(input)} disabled={isRunning || !input.trim()} size="icon" className="flex-shrink-0 h-10 w-10 control-button-primary">
-              {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
+            <SendButton onClick={() => executeGoal(input)} disabled={isRunning || !input.trim()} isLoading={isRunning} />
           </div>
         </div>
       </div>
