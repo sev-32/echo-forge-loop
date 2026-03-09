@@ -103,7 +103,7 @@ export function EvolutionPanel() {
       <Tabs defaultValue="traces" className="flex-1 flex flex-col min-h-0">
         <TabsList className="w-fit">
           <TabsTrigger value="traces" className="text-[10px] gap-1">
-            <IconShield className="h-3 w-3" />Quartet Traces
+            <IconTrust className="h-3 w-3" />Quartet Traces
           </TabsTrigger>
           <TabsTrigger value="dora" className="text-[10px] gap-1">
             <IconGauge className="h-3 w-3" />DORA Metrics
