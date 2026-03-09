@@ -65,9 +65,9 @@
 
     /* === TERMINAL COLORS === */
     --terminal-bg: 220 15% 3%;
-    --terminal-fg: 30 80% 70%;
-    --terminal-cursor: 30 95% 50%;
-    --terminal-selection: 30 50% 15%;
+    --terminal-fg: 200 80% 70%;
+    --terminal-cursor: 210 90% 52%;
+    --terminal-selection: 210 50% 15%;
 
     /* === CODE COLORS === */
     --code-bg: 220 12% 5%;
