@@ -22,7 +22,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   MessageSquare, Brain, Bot, BarChart3,
   Network, Activity, FlaskConical, BookOpen, PanelRightOpen, PanelRightClose,
-  History, Database, ShieldCheck, Workflow, GitBranch, Layers
+  History, Database, ShieldCheck, Workflow, GitBranch, Layers, Target
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
