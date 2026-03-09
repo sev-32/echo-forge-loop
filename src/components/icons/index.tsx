@@ -707,3 +707,38 @@ export function IconEyeOff({ size = 24, ...props }: IconProps) {
     </svg>
   );
 }
+
+export function IconPersona({ size = 24, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" {...props}>
+      {/* Persona mask / theater mask */}
+      <circle cx="12" cy="10" r="7" />
+      <path d="M9 9v1M15 9v1" />
+      <path d="M9 13c1 1.5 5 1.5 6 0" />
+      <path d="M7 17l-1 4M17 17l1 4" />
+    </svg>
+  );
+}
+
+export function IconEvolution({ size = 24, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" {...props}>
+      {/* DNA / evolution helix */}
+      <path d="M4 4c4 0 4 4 8 4s4-4 8-4" />
+      <path d="M4 12c4 0 4 4 8 4s4-4 8-4" />
+      <path d="M4 20c4 0 4-4 8-4s4 4 8 4" />
+      <circle cx="8" cy="8" r="1" fill="currentColor" />
+      <circle cx="16" cy="16" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function IconContext({ size = 24, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" {...props}>
+      {/* Context window / layers */}
+      <rect x="3" y="3" width="18" height="18" rx="1" />
+      <path d="M3 9h18M3 15h18M9 3v18" />
+    </svg>
+  );
+}

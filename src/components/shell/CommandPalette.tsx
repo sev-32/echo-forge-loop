@@ -6,7 +6,8 @@ import {
 import {
   IconIntelligence, IconMission, IconSwarm, IconHistory,
   IconMemory, IconJournal, IconCognitive, IconKnowledge,
-  IconTrust, IconSettings, IconSearch,
+  IconTrust, IconPersona, IconEvolution, IconContext,
+  IconSettings, IconSearch,
 } from "@/components/icons";
 import type { ComponentType, SVGProps } from "react";
 
@@ -26,6 +27,9 @@ const surfaces: { id: string; label: string; icon: IconComponent; shortcut: stri
   { id: 'cognition', label: 'Cognition', icon: IconCognitive, shortcut: '7', section: 'Navigation' },
   { id: 'knowledge', label: 'Knowledge Graph', icon: IconKnowledge, shortcut: '8', section: 'Navigation' },
   { id: 'trust', label: 'Trust Layer', icon: IconTrust, shortcut: '9', section: 'Navigation' },
+  { id: 'persona', label: 'Persona', icon: IconPersona, shortcut: '0', section: 'Navigation' },
+  { id: 'evolution', label: 'Evolution', icon: IconEvolution, shortcut: '', section: 'Navigation' },
+  { id: 'context', label: 'Context', icon: IconContext, shortcut: '', section: 'Navigation' },
 ];
 
 export function CommandPalette({ onNavigate }: CommandPaletteProps) {

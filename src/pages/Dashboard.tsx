@@ -10,6 +10,9 @@ import { CognitionPanel } from '@/components/CognitionPanel';
 import { KnowledgeGraphPanel } from '@/components/KnowledgeGraphPanel';
 import { TrustPanel } from '@/components/TrustPanel';
 import { TestAuditPanel } from '@/components/TestAuditPanel';
+import { PersonaControlPanel } from '@/components/PersonaControlPanel';
+import { EvolutionPanel } from '@/components/EvolutionPanel';
+import { ContextPanel } from '@/components/ContextPanel';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('chat');
@@ -35,6 +38,13 @@ export default function Dashboard() {
             <TestAuditPanel />
           </div>
         )}
+        {activeTab === 'persona' && (
+          <div className="h-full p-3">
+            <PersonaControlPanel />
+          </div>
+        )}
+        {activeTab === 'evolution' && <EvolutionPanel />}
+        {activeTab === 'context' && <ContextPanel />}
       </div>
     </CognitiveShell>
   );
