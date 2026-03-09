@@ -87,6 +87,7 @@ export default function Dashboard() {
           {activeTab === 'knowledge' && <KnowledgeGraphPanel />}
           {activeTab === 'cognition' && <CognitionPanel />}
           {activeTab === 'evolution' && <EvolutionPanel />}
+          {activeTab === 'swarm' && <div className="h-full p-3"><SwarmPanel /></div>}
           {activeTab === 'journal' && <div className="h-full p-3"><JournalPanel /></div>}
           {activeTab === 'events' && <div className="h-full p-3"><EventLogPanel /></div>}
           {activeTab === 'tests' && (
