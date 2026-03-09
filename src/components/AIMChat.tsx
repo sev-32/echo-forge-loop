@@ -1203,21 +1203,21 @@ export function AIMChat() {
     );
   }
 
-  // ─── CHAT VIEW (idle or completed runs) ───────────────
+  // ─── CHAT VIEW (idle or completed runs) — Hasselblad ───
   return (
     <div className="flex flex-col h-full bg-background">
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-8 px-4 py-8">
             <div className="text-center space-y-4">
-              <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto pulse-glow">
+              <div className="w-20 h-20 rounded-lg surface-bezel flex items-center justify-center mx-auto amber-glow">
                 <Brain className="h-10 w-10 text-primary" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold gradient-text">AIM-OS</h2>
-                <p className="text-xs text-muted-foreground mt-1">Autonomous Intelligence Machine • Self-Evolving Operating System</p>
+                <h2 className="text-2xl font-mono font-bold tracking-[0.1em] text-label-primary">AIM-OS</h2>
+                <p className="text-engraved mt-1">AUTONOMOUS INTELLIGENCE MACHINE</p>
               </div>
-              <p className="text-sm text-muted-foreground max-w-lg leading-relaxed">
+              <p className="text-xs text-label-muted max-w-lg leading-relaxed">
                 Give me any goal. I'll load memory from past runs, plan with learned process rules,
                 execute with calibrated detail, verify & retry failures, then deeply reflect —
                 showing you every thought and decision along the way.
@@ -1238,11 +1238,11 @@ export function AIMChat() {
               ].map((step, i) => (
                 <div key={i} className="flex items-center gap-2">
                   {i > 0 && <ArrowRight className="h-3 w-3 text-border" />}
-                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-card">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 surface-well rounded">
                     <step.icon className="h-3.5 w-3.5 text-primary" />
                     <div>
-                      <div className="font-semibold text-foreground">{step.label}</div>
-                      <div className="text-[9px] text-muted-foreground">{step.desc}</div>
+                      <div className="font-mono font-semibold text-label-primary text-[10px] tracking-wide">{step.label.toUpperCase()}</div>
+                      <div className="text-[9px] text-label-muted">{step.desc}</div>
                     </div>
                   </div>
                 </div>
@@ -1252,9 +1252,9 @@ export function AIMChat() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-w-3xl w-full">
               {EXAMPLE_GOALS.map((goal, i) => (
                 <button key={i} onClick={() => executeGoal(goal.text)}
-                  className="group text-left text-xs p-3.5 rounded-lg border border-border bg-card hover:bg-secondary hover:border-primary/30 transition-all duration-200">
+                  className="group text-left text-xs p-3.5 surface-well rounded hover:amber-glow transition-all duration-200">
                   <span className="text-sm">{goal.icon}</span>
-                  <p className="text-muted-foreground group-hover:text-foreground transition-colors mt-1 leading-relaxed line-clamp-2">{goal.text}</p>
+                  <p className="text-label-muted group-hover:text-label-primary transition-colors mt-1 leading-relaxed line-clamp-2">{goal.text}</p>
                 </button>
               ))}
             </div>
