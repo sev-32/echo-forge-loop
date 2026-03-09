@@ -82,7 +82,7 @@
     --node-active: 210 90% 52%;
     --node-done: 142 70% 42%;
     --node-failed: 0 70% 50%;
-    --node-blocked: 25 90% 50%;
+    --node-blocked: 0 70% 50%;
     --edge-default: 220 10% 25%;
     --edge-active: 30 95% 50%;
 
