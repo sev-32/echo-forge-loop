@@ -22,7 +22,7 @@ async function sha256(content: string): Promise<string> {
 }
 
 // ─── AI Gateway helper ───────────────────────────────
-async function callAI(apiKey: string, model: string, messages: any[], tools?: any[], toolChoice?: any, stream = false) {
+async function callAI(apiKey: string, model: string, messages: any[], tools?: any[], toolChoice?: any, stream = false, signal?: AbortSignal) {
   const body: any = { model, messages };
   if (tools) body.tools = tools;
   if (toolChoice) body.tool_choice = toolChoice;
@@ -32,6 +32,7 @@ async function callAI(apiKey: string, model: string, messages: any[], tools?: an
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
 }
 
@@ -1153,7 +1154,7 @@ Patterns: ${(styleAnalysis.patterns_observed || []).join(', ')}
                 required: ["response", "confidence", "follow_up_suggestions"]
               }
             }
-          }], { type: "function", function: { name: "synthesize_response" } });
+          }], { type: "function", function: { name: "synthesize_response" } }, false, synthAbort.signal);
 
           clearTimeout(synthTimeout);
 

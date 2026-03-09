@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CognitiveShell } from '@/components/shell/CognitiveShell';
+import { PanelErrorBoundary } from '@/components/shell/ErrorBoundary';
 import { AIMChat } from '@/components/AIMChat';
 import { RunHistoryPanel } from '@/components/RunHistoryPanel';
 import { MemoryPanel } from '@/components/MemoryPanel';
@@ -24,27 +25,51 @@ export default function Dashboard() {
       systemStatus="idle"
     >
       <div className="h-full overflow-auto">
-        {activeTab === 'chat' && <AIMChat />}
-        {activeTab === 'runs' && <RunHistoryPanel />}
-        {activeTab === 'memory' && <MemoryPanel />}
-        {activeTab === 'missions' && <MissionPanel />}
-        {activeTab === 'swarm' && <div className="h-full p-3"><SwarmPanel /></div>}
-        {activeTab === 'journal' && <div className="h-full p-3"><JournalPanel /></div>}
-        {activeTab === 'cognition' && <CognitionPanel />}
-        {activeTab === 'knowledge' && <KnowledgeGraphPanel />}
-        {activeTab === 'trust' && (
-          <div className="h-full p-3 grid grid-cols-2 gap-3">
-            <TrustPanel />
-            <TestAuditPanel />
-          </div>
-        )}
-        {activeTab === 'persona' && (
-          <div className="h-full p-3">
-            <PersonaControlPanel />
-          </div>
-        )}
-        {activeTab === 'evolution' && <EvolutionPanel />}
-        {activeTab === 'context' && <ContextPanel />}
+        <PanelErrorBoundary fallbackTitle="Chat">
+          {activeTab === 'chat' && <AIMChat />}
+        </PanelErrorBoundary>
+        <PanelErrorBoundary fallbackTitle="Run History">
+          {activeTab === 'runs' && <RunHistoryPanel />}
+        </PanelErrorBoundary>
+        <PanelErrorBoundary fallbackTitle="Memory">
+          {activeTab === 'memory' && <MemoryPanel />}
+        </PanelErrorBoundary>
+        <PanelErrorBoundary fallbackTitle="Missions">
+          {activeTab === 'missions' && <MissionPanel />}
+        </PanelErrorBoundary>
+        <PanelErrorBoundary fallbackTitle="Swarm">
+          {activeTab === 'swarm' && <div className="h-full p-3"><SwarmPanel /></div>}
+        </PanelErrorBoundary>
+        <PanelErrorBoundary fallbackTitle="Journal">
+          {activeTab === 'journal' && <div className="h-full p-3"><JournalPanel /></div>}
+        </PanelErrorBoundary>
+        <PanelErrorBoundary fallbackTitle="Cognition">
+          {activeTab === 'cognition' && <CognitionPanel />}
+        </PanelErrorBoundary>
+        <PanelErrorBoundary fallbackTitle="Knowledge Graph">
+          {activeTab === 'knowledge' && <KnowledgeGraphPanel />}
+        </PanelErrorBoundary>
+        <PanelErrorBoundary fallbackTitle="Trust">
+          {activeTab === 'trust' && (
+            <div className="h-full p-3 grid grid-cols-2 gap-3">
+              <TrustPanel />
+              <TestAuditPanel />
+            </div>
+          )}
+        </PanelErrorBoundary>
+        <PanelErrorBoundary fallbackTitle="Persona">
+          {activeTab === 'persona' && (
+            <div className="h-full p-3">
+              <PersonaControlPanel />
+            </div>
+          )}
+        </PanelErrorBoundary>
+        <PanelErrorBoundary fallbackTitle="Evolution">
+          {activeTab === 'evolution' && <EvolutionPanel />}
+        </PanelErrorBoundary>
+        <PanelErrorBoundary fallbackTitle="Context">
+          {activeTab === 'context' && <ContextPanel />}
+        </PanelErrorBoundary>
       </div>
     </CognitiveShell>
   );
