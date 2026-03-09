@@ -1,7 +1,10 @@
-import { useState, useEffect, useRef } from "react";
-import { Activity, ChevronRight, ChevronLeft, Zap, Clock, Hash, Radio } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSystemEvents } from "@/hooks/use-orchestration";
+import {
+  IconActivity, IconChevronRight, IconChevronLeft,
+  IconRadio, IconClock, IconToken
+} from "@/components/icons";
 
 interface RightPanelProps {
   isOpen: boolean;
@@ -24,7 +27,7 @@ export function RightPanel({ isOpen, onToggle }: RightPanelProps) {
         onClick={onToggle}
         className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-16 surface-raised rounded-l flex items-center justify-center hover:amber-glow transition-all"
       >
-        <ChevronLeft className="w-4 h-4 text-label-muted" />
+        <IconChevronLeft size={16} className="text-label-muted" />
       </button>
     );
   }
@@ -34,22 +37,22 @@ export function RightPanel({ isOpen, onToggle }: RightPanelProps) {
       {/* Header */}
       <div className="panel-header">
         <div className="flex items-center gap-2">
-          <Radio className="w-3.5 h-3.5 text-primary" />
+          <IconRadio size={14} className="text-primary" />
           <span className="text-engraved">LIVE FEED</span>
           {events.length > 0 && (
             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
           )}
         </div>
         <button onClick={onToggle} className="rail-icon w-6 h-6">
-          <ChevronRight className="w-3.5 h-3.5" />
+          <IconChevronRight size={14} />
         </button>
       </div>
 
       {/* Stats Row — CNC gauge cluster */}
       <div className="grid grid-cols-3 gap-2 p-3 border-b border-border">
-        <GaugeCell icon={Zap} label="Events" value={events.length.toString()} />
-        <GaugeCell icon={Clock} label="Uptime" value="--" />
-        <GaugeCell icon={Hash} label="Tasks" value="--" />
+        <GaugeCell icon={IconActivity} label="Events" value={events.length.toString()} />
+        <GaugeCell icon={IconClock} label="Uptime" value="--" />
+        <GaugeCell icon={IconToken} label="Tasks" value="--" />
       </div>
 
       {/* Event Stream */}
@@ -57,7 +60,7 @@ export function RightPanel({ isOpen, onToggle }: RightPanelProps) {
         <div className="p-2 space-y-1">
           {events.length === 0 ? (
             <div className="text-center py-8">
-              <Activity className="w-5 h-5 text-label-engraved mx-auto mb-2" />
+              <IconActivity size={20} className="text-label-engraved mx-auto mb-2" />
               <span className="text-engraved">AWAITING EVENTS</span>
             </div>
           ) : (
@@ -71,10 +74,10 @@ export function RightPanel({ isOpen, onToggle }: RightPanelProps) {
   );
 }
 
-function GaugeCell({ icon: Icon, label, value }: { icon: typeof Activity; label: string; value: string }) {
+function GaugeCell({ icon: Icon, label, value }: { icon: typeof IconActivity; label: string; value: string }) {
   return (
     <div className="surface-well rounded p-2 text-center">
-      <Icon className="w-3 h-3 text-primary mx-auto mb-1" />
+      <Icon size={12} className="text-primary mx-auto mb-1" />
       <div className="text-xs font-mono font-semibold text-label-primary">{value}</div>
       <div className="text-engraved">{label}</div>
     </div>

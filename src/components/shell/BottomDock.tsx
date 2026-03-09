@@ -1,4 +1,4 @@
-import { Circle, Clock, Cpu, HardDrive, Thermometer } from "lucide-react";
+import { IconStatusActive, IconClock, IconCpu, IconGauge, IconActivity } from "@/components/icons";
 
 interface BottomDockProps {
   iteration?: number;
@@ -12,7 +12,7 @@ export function BottomDock({ iteration = 0, checkpoint, memoryUsage = '0 MB' }: 
       {/* Left - Process Info */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-1.5">
-          <Circle className="w-1.5 h-1.5 text-primary" fill="currentColor" />
+          <IconStatusActive size={6} className="text-primary" />
           <span className="text-engraved">ITER</span>
           <span className="text-[10px] font-mono text-label-secondary">{iteration}</span>
         </div>
@@ -21,7 +21,7 @@ export function BottomDock({ iteration = 0, checkpoint, memoryUsage = '0 MB' }: 
           <>
             <div className="w-px h-3 bg-border" />
             <div className="flex items-center gap-1.5">
-              <Clock className="w-3 h-3 text-label-muted" />
+              <IconClock size={12} className="text-label-muted" />
               <span className="text-[10px] font-mono text-label-muted">{checkpoint}</span>
             </div>
           </>
@@ -32,7 +32,7 @@ export function BottomDock({ iteration = 0, checkpoint, memoryUsage = '0 MB' }: 
 
       {/* Center - Status Ticker */}
       <div className="flex items-center gap-1.5">
-        <Thermometer className="w-3 h-3 text-label-muted" />
+        <IconGauge size={12} className="text-label-muted" />
         <span className="text-[9px] font-mono text-label-engraved tracking-wide">NOMINAL</span>
       </div>
 
@@ -41,11 +41,11 @@ export function BottomDock({ iteration = 0, checkpoint, memoryUsage = '0 MB' }: 
       {/* Right - System Resources */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-1.5">
-          <HardDrive className="w-3 h-3 text-label-muted" />
+          <IconActivity size={12} className="text-label-muted" />
           <span className="text-[10px] font-mono text-label-muted">{memoryUsage}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <Cpu className="w-3 h-3 text-label-muted" />
+          <IconCpu size={12} className="text-label-muted" />
           <span className="text-[10px] font-mono text-label-muted">--</span>
         </div>
       </div>
