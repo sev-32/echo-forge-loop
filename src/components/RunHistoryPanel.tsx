@@ -343,7 +343,7 @@ export function RunHistoryPanel() {
   const [selectedRun, setSelectedRun] = useState<RunTrace | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchRuns = async () => {
+  const fetchRuns = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('run_traces')
@@ -355,9 +355,10 @@ export function RunHistoryPanel() {
       if (data.length > 0 && !selectedRun) setSelectedRun(data[0] as unknown as RunTrace);
     }
     setLoading(false);
-  };
+  }, [selectedRun]);
 
   useEffect(() => { fetchRuns(); }, []);
+  useRealtimeRefresh(fetchRuns, { tables: ['run_traces'], debounceMs: 1000 });
 
   return (
     <div className="flex flex-col h-full gap-3 p-3">
