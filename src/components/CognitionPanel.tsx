@@ -1,10 +1,10 @@
 // ============================================
 // Cognition Panel — CAS Meta-Cognitive Monitor
+// Hasselblad X2D Aesthetic
 // ============================================
 
 import { useState, useEffect, useCallback } from 'react';
 import { cas, type CognitiveSnapshot, type FailureMode } from '@/lib/cas';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,9 +15,9 @@ import {
 } from 'lucide-react';
 
 const ATTENTION_COLORS: Record<string, string> = {
-  narrow: 'bg-red-500/20 text-red-400',
-  normal: 'bg-emerald-500/20 text-emerald-400',
-  wide: 'bg-blue-500/20 text-blue-400',
+  narrow: 'bg-status-error/20 text-status-error',
+  normal: 'bg-status-success/20 text-status-success',
+  wide: 'bg-status-info/20 text-status-info',
 };
 
 const FAILURE_LABELS: Record<FailureMode, string> = {
@@ -56,58 +56,58 @@ export function CognitionPanel() {
       {/* Header */}
       <div className="flex items-center gap-2">
         <Brain className="h-3.5 w-3.5 text-primary" />
-        <span className="text-xs font-bold gradient-text">CAS — Cognitive Analysis</span>
+        <span className="text-engraved">CAS — COGNITIVE ANALYSIS</span>
         <div className="flex-1" />
-        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={refresh}>
+        <Button variant="ghost" size="icon" className="h-6 w-6 rail-icon" onClick={refresh}>
           <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 
-      {/* Stats */}
+      {/* Stats — CNC gauge cluster */}
       {stats && (
         <div className="grid grid-cols-5 gap-2">
-          <MetricCard icon={Activity} label="Snapshots" value={stats.totalSnapshots.toString()} />
-          <MetricCard icon={Gauge} label="Avg Load" value={`${(stats.avgCognitiveLoad * 100).toFixed(0)}%`}
-            color={stats.avgCognitiveLoad > 0.7 ? 'text-red-400' : stats.avgCognitiveLoad > 0.4 ? 'text-amber-400' : 'text-emerald-400'} />
-          <MetricCard icon={TrendingDown} label="Drift Alerts" value={stats.driftCount.toString()}
-            color={stats.driftCount > 0 ? 'text-amber-400' : 'text-emerald-400'} />
-          <MetricCard icon={Eye} label="Consistency" value={`${(stats.avgConsistency * 100).toFixed(0)}%`} />
-          <MetricCard icon={Focus} label="Uncertainty" value={`${(stats.avgUncertaintyAwareness * 100).toFixed(0)}%`} />
+          <GaugeCard icon={Activity} label="Snapshots" value={stats.totalSnapshots.toString()} />
+          <GaugeCard icon={Gauge} label="Avg Load" value={`${(stats.avgCognitiveLoad * 100).toFixed(0)}%`}
+            highlight={stats.avgCognitiveLoad > 0.7 ? 'error' : stats.avgCognitiveLoad > 0.4 ? 'warning' : 'success'} />
+          <GaugeCard icon={TrendingDown} label="Drift Alerts" value={stats.driftCount.toString()}
+            highlight={stats.driftCount > 0 ? 'warning' : 'success'} />
+          <GaugeCard icon={Eye} label="Consistency" value={`${(stats.avgConsistency * 100).toFixed(0)}%`} />
+          <GaugeCard icon={Focus} label="Uncertainty" value={`${(stats.avgUncertaintyAwareness * 100).toFixed(0)}%`} />
         </div>
       )}
 
       <div className="flex-1 flex gap-3 overflow-hidden">
         {/* Left: Timeline */}
         <div className="flex-1 flex flex-col gap-1">
-          <span className="text-[10px] font-semibold text-muted-foreground">Cognitive Timeline</span>
+          <span className="text-engraved">COGNITIVE TIMELINE</span>
           <ScrollArea className="flex-1">
             <div className="space-y-1">
               {snapshots.map(snap => (
-                <div key={snap.id} className="p-2 rounded border border-border/50 bg-card/50">
+                <div key={snap.id} className="p-2 surface-well rounded">
                   <div className="flex items-center gap-1.5">
                     <div className="w-16">
                       <Progress value={snap.cognitive_load * 100} className="h-1" />
-                      <span className="text-[8px] text-muted-foreground">{(snap.cognitive_load * 100).toFixed(0)}% load</span>
+                      <span className="text-[8px] text-label-muted font-mono">{(snap.cognitive_load * 100).toFixed(0)}% load</span>
                     </div>
-                    <Badge className={`${ATTENTION_COLORS[snap.attention_breadth]} text-[8px] px-1 py-0 h-3`}>
+                    <Badge className={`${ATTENTION_COLORS[snap.attention_breadth]} text-[8px] px-1 py-0 h-3 border-0`}>
                       {snap.attention_breadth}
                     </Badge>
                     {snap.drift_detected && (
-                      <Badge className="bg-amber-500/20 text-amber-400 text-[8px] px-1 py-0 h-3">
+                      <Badge className="bg-status-warning/20 text-status-warning text-[8px] px-1 py-0 h-3 border-0">
                         <AlertTriangle className="h-2 w-2 mr-0.5" /> drift
                       </Badge>
                     )}
                     {snap.failure_mode && (
-                      <Badge className="bg-red-500/20 text-red-400 text-[8px] px-1 py-0 h-3">
+                      <Badge className="bg-status-error/20 text-status-error text-[8px] px-1 py-0 h-3 border-0">
                         {FAILURE_LABELS[snap.failure_mode] || snap.failure_mode}
                       </Badge>
                     )}
                     <span className="flex-1" />
-                    <span className="text-[9px] text-muted-foreground">
+                    <span className="text-[9px] text-label-muted font-mono">
                       {new Date(snap.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5 text-[9px] text-muted-foreground">
+                  <div className="flex items-center gap-2 mt-0.5 text-[9px] text-label-muted font-mono">
                     <span>depth:{snap.reasoning_depth}</span>
                     <span>consistency:{(snap.self_consistency_score * 100).toFixed(0)}%</span>
                     <span>concepts:{snap.active_concepts.length}</span>
@@ -116,18 +116,19 @@ export function CognitionPanel() {
                   {snap.active_concepts.length > 0 && (
                     <div className="flex gap-0.5 flex-wrap mt-1">
                       {snap.active_concepts.slice(0, 6).map((c, i) => (
-                        <span key={i} className="text-[8px] px-1 py-0 rounded bg-primary/10 text-primary">{c}</span>
+                        <span key={i} className="text-[8px] px-1 py-0 rounded bg-primary/10 text-primary font-mono">{c}</span>
                       ))}
                       {snap.active_concepts.length > 6 && (
-                        <span className="text-[8px] text-muted-foreground">+{snap.active_concepts.length - 6}</span>
+                        <span className="text-[8px] text-label-muted">+{snap.active_concepts.length - 6}</span>
                       )}
                     </div>
                   )}
                 </div>
               ))}
               {snapshots.length === 0 && (
-                <div className="text-center text-muted-foreground text-xs py-8">
-                  {loading ? 'Loading…' : 'No cognitive snapshots yet.'}
+                <div className="text-center py-8">
+                  <Brain className="w-5 h-5 text-label-engraved mx-auto mb-2" />
+                  <span className="text-engraved">{loading ? 'LOADING...' : 'NO SNAPSHOTS'}</span>
                 </div>
               )}
             </div>
@@ -136,66 +137,62 @@ export function CognitionPanel() {
 
         {/* Right: Drift alerts + Failure modes */}
         <div className="w-56 flex flex-col gap-2">
-          <Card className="flex-1">
-            <CardHeader className="p-2 pb-1">
-              <CardTitle className="text-[10px] flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3 text-amber-400" /> Drift Alerts ({driftAlerts.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-2 pt-0">
-              <ScrollArea className="max-h-40">
-                <div className="space-y-1">
-                  {driftAlerts.slice(0, 10).map(alert => (
-                    <div key={alert.id} className="text-[9px] p-1 rounded bg-amber-500/5 border border-amber-500/20">
-                      <div className="font-medium text-amber-400">Score: {(alert.drift_score * 100).toFixed(0)}%</div>
-                      {alert.drift_details && <div className="text-muted-foreground mt-0.5">{alert.drift_details}</div>}
-                    </div>
-                  ))}
-                  {driftAlerts.length === 0 && <span className="text-[9px] text-muted-foreground">No drift detected</span>}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+          <div className="panel flex-1">
+            <div className="panel-header">
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className="h-3 w-3 text-status-warning" />
+                <span className="text-engraved">DRIFT ALERTS ({driftAlerts.length})</span>
+              </div>
+            </div>
+            <ScrollArea className="max-h-40 p-2">
+              <div className="space-y-1">
+                {driftAlerts.slice(0, 10).map(alert => (
+                  <div key={alert.id} className="text-[9px] p-1.5 surface-well rounded">
+                    <div className="font-mono font-semibold text-status-warning">Score: {(alert.drift_score * 100).toFixed(0)}%</div>
+                    {alert.drift_details && <div className="text-label-muted mt-0.5">{alert.drift_details}</div>}
+                  </div>
+                ))}
+                {driftAlerts.length === 0 && <span className="text-[9px] text-label-muted">No drift detected</span>}
+              </div>
+            </ScrollArea>
+          </div>
 
           {stats && Object.keys(stats.failureModes).length > 0 && (
-            <Card>
-              <CardHeader className="p-2 pb-1">
-                <CardTitle className="text-[10px] flex items-center gap-1">
-                  <Zap className="h-3 w-3 text-red-400" /> Failure Modes
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-2 pt-0">
-                <div className="space-y-0.5">
-                  {Object.entries(stats.failureModes).map(([mode, count]) => (
-                    <div key={mode} className="flex items-center gap-1 text-[9px]">
-                      <span className="text-red-400">•</span>
-                      <span>{FAILURE_LABELS[mode as FailureMode] || mode}</span>
-                      <span className="flex-1" />
-                      <span className="font-mono">{count as number}</span>
-                    </div>
-                  ))}
+            <div className="panel">
+              <div className="panel-header">
+                <div className="flex items-center gap-1.5">
+                  <Zap className="h-3 w-3 text-status-error" />
+                  <span className="text-engraved">FAILURE MODES</span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <div className="p-2 space-y-0.5">
+                {Object.entries(stats.failureModes).map(([mode, count]) => (
+                  <div key={mode} className="flex items-center gap-1 text-[9px]">
+                    <span className="text-status-error">•</span>
+                    <span className="text-label-secondary">{FAILURE_LABELS[mode as FailureMode] || mode}</span>
+                    <span className="flex-1" />
+                    <span className="font-mono text-label-primary">{count as number}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {stats && (
-            <Card>
-              <CardHeader className="p-2 pb-1">
-                <CardTitle className="text-[10px]">Attention Distribution</CardTitle>
-              </CardHeader>
-              <CardContent className="p-2 pt-0">
-                <div className="space-y-0.5">
-                  {Object.entries(stats.attentionDistribution).map(([breadth, count]) => (
-                    <div key={breadth} className="flex items-center gap-1 text-[9px]">
-                      <Badge className={`${ATTENTION_COLORS[breadth] || ''} text-[8px] px-1 py-0 h-3`}>{breadth}</Badge>
-                      <span className="flex-1" />
-                      <span className="font-mono">{count as number}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="panel">
+              <div className="panel-header">
+                <span className="text-engraved">ATTENTION DISTRIBUTION</span>
+              </div>
+              <div className="p-2 space-y-0.5">
+                {Object.entries(stats.attentionDistribution).map(([breadth, count]) => (
+                  <div key={breadth} className="flex items-center gap-1 text-[9px]">
+                    <Badge className={`${ATTENTION_COLORS[breadth] || ''} text-[8px] px-1 py-0 h-3 border-0`}>{breadth}</Badge>
+                    <span className="flex-1" />
+                    <span className="font-mono text-label-primary">{count as number}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -203,12 +200,19 @@ export function CognitionPanel() {
   );
 }
 
-function MetricCard({ icon: Icon, label, value, color }: { icon: typeof Activity; label: string; value: string; color?: string }) {
+function GaugeCard({ icon: Icon, label, value, highlight }: { icon: typeof Activity; label: string; value: string; highlight?: string }) {
+  const colorMap: Record<string, string> = {
+    success: 'text-status-success',
+    warning: 'text-status-warning',
+    error: 'text-status-error',
+  };
+  const color = highlight ? colorMap[highlight] : 'text-label-primary';
+  
   return (
-    <div className="bg-card rounded border border-border/50 p-1.5 text-center">
-      <Icon className={`h-3 w-3 mx-auto mb-0.5 ${color || 'text-muted-foreground'}`} />
-      <div className={`text-[11px] font-bold ${color || ''}`}>{value}</div>
-      <div className="text-[9px] text-muted-foreground">{label}</div>
+    <div className="surface-well rounded p-2 text-center">
+      <Icon className={`h-3 w-3 mx-auto mb-0.5 ${color}`} />
+      <div className={`text-[11px] font-mono font-bold ${color}`}>{value}</div>
+      <div className="text-engraved">{label}</div>
     </div>
   );
 }

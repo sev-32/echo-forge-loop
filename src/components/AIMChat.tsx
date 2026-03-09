@@ -266,26 +266,26 @@ async function streamAIMOS({
   }
 }
 
-// ─── Markdown Renderer ──────────────────────────────────
+// ─── Markdown Renderer (Hasselblad aesthetic) ───────────
 const mdComponents = {
-  h1: ({ children }: any) => <h1 className="text-sm font-bold text-foreground mt-3 mb-1.5">{children}</h1>,
-  h2: ({ children }: any) => <h2 className="text-xs font-bold text-foreground mt-2.5 mb-1">{children}</h2>,
-  h3: ({ children }: any) => <h3 className="text-xs font-semibold text-foreground mt-2 mb-1">{children}</h3>,
-  p: ({ children }: any) => <p className="text-xs text-secondary-foreground mb-1.5 leading-relaxed">{children}</p>,
-  ul: ({ children }: any) => <ul className="text-xs text-secondary-foreground ml-3 mb-1.5 space-y-0.5 list-disc">{children}</ul>,
-  ol: ({ children }: any) => <ol className="text-xs text-secondary-foreground ml-3 mb-1.5 space-y-0.5 list-decimal">{children}</ol>,
-  li: ({ children }: any) => <li className="text-xs leading-relaxed">{children}</li>,
+  h1: ({ children }: any) => <h1 className="text-sm font-bold text-label-primary mt-3 mb-1.5">{children}</h1>,
+  h2: ({ children }: any) => <h2 className="text-xs font-bold text-label-primary mt-2.5 mb-1">{children}</h2>,
+  h3: ({ children }: any) => <h3 className="text-xs font-semibold text-label-primary mt-2 mb-1">{children}</h3>,
+  p: ({ children }: any) => <p className="text-xs text-label-secondary mb-1.5 leading-relaxed">{children}</p>,
+  ul: ({ children }: any) => <ul className="text-xs text-label-secondary ml-3 mb-1.5 space-y-0.5 list-disc">{children}</ul>,
+  ol: ({ children }: any) => <ol className="text-xs text-label-secondary ml-3 mb-1.5 space-y-0.5 list-decimal">{children}</ol>,
+  li: ({ children }: any) => <li className="text-xs leading-relaxed text-label-secondary">{children}</li>,
   code: ({ className, children }: any) => {
     const isBlock = className?.includes('language-');
     return isBlock
-      ? <pre className="bg-[hsl(var(--code-bg))] text-[hsl(var(--code-fg))] p-2.5 rounded-md text-[10px] font-mono overflow-x-auto my-2 border border-border"><code>{children}</code></pre>
-      : <code className="bg-secondary px-1 py-0.5 rounded text-[10px] font-mono text-accent">{children}</code>;
+      ? <pre className="code-block p-2.5 rounded text-[10px] overflow-x-auto my-2"><code>{children}</code></pre>
+      : <code className="surface-well px-1 py-0.5 rounded text-[10px] font-mono text-primary">{children}</code>;
   },
-  strong: ({ children }: any) => <strong className="font-semibold text-foreground">{children}</strong>,
-  blockquote: ({ children }: any) => <blockquote className="border-l-2 border-primary/40 pl-3 my-2 text-muted-foreground italic">{children}</blockquote>,
+  strong: ({ children }: any) => <strong className="font-semibold text-label-primary">{children}</strong>,
+  blockquote: ({ children }: any) => <blockquote className="border-l-2 border-primary/40 pl-3 my-2 text-label-muted italic">{children}</blockquote>,
   table: ({ children }: any) => <div className="overflow-x-auto my-2"><table className="text-[10px] border-collapse w-full">{children}</table></div>,
-  th: ({ children }: any) => <th className="border border-border px-2 py-1 bg-secondary text-left font-medium text-xs">{children}</th>,
-  td: ({ children }: any) => <td className="border border-border px-2 py-1 text-xs">{children}</td>,
+  th: ({ children }: any) => <th className="surface-well px-2 py-1 text-left font-medium text-xs text-label-primary">{children}</th>,
+  td: ({ children }: any) => <td className="border border-border px-2 py-1 text-xs text-label-secondary">{children}</td>,
   hr: () => <hr className="border-border my-3" />,
 };
 
@@ -303,47 +303,46 @@ const phaseConfig: Record<string, { icon: any; label: string; color: string }> =
   complete: { icon: CheckCircle2, label: 'Complete', color: 'text-[hsl(var(--status-success))]' },
 };
 
-// ─── Phase Pipeline ─────────────────────────────────────
+// ─── Phase Pipeline (CNC-machined gauge strip) ─────────
 function PhasePipeline({ activePhase, status }: { activePhase: string; status: RunData['status'] }) {
   const phases = ['memory', 'planning', 'execute', 'verify', 'audit', 'synthesize', 'reflect', 'evolve', 'complete'];
   const activeIdx = phases.indexOf(activePhase);
 
   return (
-    <div className="flex items-center gap-1 px-3 py-2 bg-card border-b border-border overflow-x-auto">
+    <div className="flex items-center gap-1 px-3 py-2 surface-well border-b border-border overflow-x-auto">
       {phases.map((phase, i) => {
         const cfg = phaseConfig[phase];
         const Icon = cfg.icon;
         const isActive = phase === activePhase;
         const isPast = i < activeIdx || status === 'complete';
-        const isFuture = i > activeIdx && status !== 'complete';
 
         return (
           <div key={phase} className="flex items-center gap-1">
             {i > 0 && (
-              <div className={`w-4 h-px ${isPast ? 'bg-[hsl(var(--status-success))]' : isActive ? 'bg-accent' : 'bg-border'}`} />
+              <div className={`w-4 h-px ${isPast ? 'bg-status-success' : isActive ? 'bg-primary' : 'bg-border'}`} />
             )}
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-medium transition-all duration-300 ${
-              isActive ? `bg-accent/10 border border-accent/30 ${cfg.color}` :
-              isPast ? 'text-[hsl(var(--status-success))] bg-[hsl(var(--status-success))]/5' :
-              'text-muted-foreground/40'
+            <div className={`flex items-center gap-1 px-2 py-1 rounded text-[9px] font-mono font-medium transition-all duration-300 ${
+              isActive ? `surface-raised amber-glow ${cfg.color}` :
+              isPast ? 'text-status-success bg-status-success/5' :
+              'text-label-engraved'
             }`}>
               <Icon className={`h-3 w-3 ${isActive ? 'animate-pulse' : ''}`} />
-              {cfg.label}
+              <span className="tracking-wide">{cfg.label.toUpperCase()}</span>
               {isPast && !isActive && <CheckCircle2 className="h-2.5 w-2.5" />}
             </div>
           </div>
         );
       })}
       {status === 'complete' && (
-        <Badge className="ml-auto text-[8px] h-4 bg-[hsl(var(--status-success))]/10 text-[hsl(var(--status-success))] border-[hsl(var(--status-success))]/20">
-          ✓ Complete
+        <Badge className="ml-auto text-[8px] h-4 bg-status-success/10 text-status-success border-status-success/20 font-mono">
+          ✓ COMPLETE
         </Badge>
       )}
     </div>
   );
 }
 
-// ─── Thought Stream ─────────────────────────────────────
+// ─── Thought Stream (Terminal aesthetic) ───────────────
 function ThoughtStream({ thoughts }: { thoughts: ThoughtEntry[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -352,31 +351,32 @@ function ThoughtStream({ thoughts }: { thoughts: ThoughtEntry[] }) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border bg-card/50">
-        <Eye className="h-3.5 w-3.5 text-accent" />
-        <span className="text-[10px] font-bold text-accent">AI Consciousness</span>
-        <Badge variant="outline" className="text-[8px] h-3.5 px-1 ml-auto">{thoughts.length}</Badge>
+      <div className="panel-header">
+        <div className="flex items-center gap-1.5">
+          <Eye className="h-3.5 w-3.5 text-primary" />
+          <span className="text-engraved">AI CONSCIOUSNESS</span>
+        </div>
+        <Badge variant="outline" className="text-[8px] h-3.5 px-1 font-mono border-border text-label-muted">{thoughts.length}</Badge>
       </div>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-2 space-y-1 bg-terminal-bg">
         {thoughts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground/40">
-            <Brain className="h-5 w-5 mb-1" />
-            <span className="text-[9px]">Awaiting thoughts...</span>
+          <div className="flex flex-col items-center justify-center h-32">
+            <Brain className="h-5 w-5 mb-1 text-label-engraved" />
+            <span className="text-engraved">AWAITING THOUGHTS</span>
           </div>
         ) : thoughts.map((t) => {
           const cfg = phaseConfig[t.phase] || phaseConfig.execute;
           const Icon = cfg.icon;
           return (
-            <div key={t.id} className="flex gap-1.5 text-[9px] leading-relaxed animate-in fade-in slide-in-from-left-1 duration-200">
+            <div key={t.id} className="flex gap-1.5 text-[9px] leading-relaxed animate-in fade-in slide-in-from-left-1 duration-200 font-mono">
               <div className="flex-shrink-0 mt-0.5">
                 <Icon className={`h-3 w-3 ${cfg.color}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <span className={`font-mono font-medium ${cfg.color}`}>{cfg.label}</span>
-                <span className="text-muted-foreground/50 mx-1">•</span>
-                <span className="text-muted-foreground">{t.content}</span>
+                <span className={`font-semibold ${cfg.color}`}>[{cfg.label.toUpperCase()}]</span>
+                <span className="text-terminal-fg ml-1">{t.content}</span>
               </div>
-              <span className="text-muted-foreground/30 font-mono text-[8px] flex-shrink-0">
+              <span className="text-label-engraved text-[8px] flex-shrink-0">
                 {new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             </div>
@@ -1188,36 +1188,36 @@ export function AIMChat() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); executeGoal(input); }
   };
 
-  // ─── ACTIVE RUN: Mission Control ──────────────────────
+  // ─── ACTIVE RUN: Mission Control (Hasselblad) ──────────
   if (showMissionControl && activeRun) {
     return (
       <div className="flex flex-col h-full bg-background">
         <MissionControl runData={activeRun} />
-        <div className="border-t border-border p-2 bg-card/80 backdrop-blur-sm">
-          <div className="flex items-center gap-2 max-w-4xl mx-auto text-[10px] text-muted-foreground">
+        <div className="border-t border-border p-2 surface-well">
+          <div className="flex items-center gap-2 max-w-4xl mx-auto">
             <Loader2 className="h-3 w-3 animate-spin text-primary" />
-            <span>AIM-OS is executing... watching AI consciousness in real-time</span>
+            <span className="text-engraved">AIM-OS EXECUTING • OBSERVING AI CONSCIOUSNESS</span>
           </div>
         </div>
       </div>
     );
   }
 
-  // ─── CHAT VIEW (idle or completed runs) ───────────────
+  // ─── CHAT VIEW (idle or completed runs) — Hasselblad ───
   return (
     <div className="flex flex-col h-full bg-background">
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-8 px-4 py-8">
             <div className="text-center space-y-4">
-              <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto pulse-glow">
+              <div className="w-20 h-20 rounded-lg surface-bezel flex items-center justify-center mx-auto amber-glow">
                 <Brain className="h-10 w-10 text-primary" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold gradient-text">AIM-OS</h2>
-                <p className="text-xs text-muted-foreground mt-1">Autonomous Intelligence Machine • Self-Evolving Operating System</p>
+                <h2 className="text-2xl font-mono font-bold tracking-[0.1em] text-label-primary">AIM-OS</h2>
+                <p className="text-engraved mt-1">AUTONOMOUS INTELLIGENCE MACHINE</p>
               </div>
-              <p className="text-sm text-muted-foreground max-w-lg leading-relaxed">
+              <p className="text-xs text-label-muted max-w-lg leading-relaxed">
                 Give me any goal. I'll load memory from past runs, plan with learned process rules,
                 execute with calibrated detail, verify & retry failures, then deeply reflect —
                 showing you every thought and decision along the way.
@@ -1238,11 +1238,11 @@ export function AIMChat() {
               ].map((step, i) => (
                 <div key={i} className="flex items-center gap-2">
                   {i > 0 && <ArrowRight className="h-3 w-3 text-border" />}
-                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-card">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 surface-well rounded">
                     <step.icon className="h-3.5 w-3.5 text-primary" />
                     <div>
-                      <div className="font-semibold text-foreground">{step.label}</div>
-                      <div className="text-[9px] text-muted-foreground">{step.desc}</div>
+                      <div className="font-mono font-semibold text-label-primary text-[10px] tracking-wide">{step.label.toUpperCase()}</div>
+                      <div className="text-[9px] text-label-muted">{step.desc}</div>
                     </div>
                   </div>
                 </div>
@@ -1252,9 +1252,9 @@ export function AIMChat() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-w-3xl w-full">
               {EXAMPLE_GOALS.map((goal, i) => (
                 <button key={i} onClick={() => executeGoal(goal.text)}
-                  className="group text-left text-xs p-3.5 rounded-lg border border-border bg-card hover:bg-secondary hover:border-primary/30 transition-all duration-200">
+                  className="group text-left text-xs p-3.5 surface-well rounded hover:amber-glow transition-all duration-200">
                   <span className="text-sm">{goal.icon}</span>
-                  <p className="text-muted-foreground group-hover:text-foreground transition-colors mt-1 leading-relaxed line-clamp-2">{goal.text}</p>
+                  <p className="text-label-muted group-hover:text-label-primary transition-colors mt-1 leading-relaxed line-clamp-2">{goal.text}</p>
                 </button>
               ))}
             </div>
@@ -1291,10 +1291,10 @@ export function AIMChat() {
         )}
       </div>
 
-      <div className="border-t border-border p-3 bg-card/80 backdrop-blur-sm">
+      <div className="border-t border-border p-3 surface-well">
         <div className="flex items-end gap-2 max-w-4xl mx-auto">
           {messages.length > 0 && (
-            <Button variant="ghost" size="icon" onClick={() => setMessages([])} className="flex-shrink-0 h-10 w-10 text-muted-foreground hover:text-foreground" title="New conversation">
+            <Button variant="ghost" size="icon" onClick={() => setMessages([])} className="flex-shrink-0 h-10 w-10 rail-icon" title="New conversation">
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
@@ -1306,12 +1306,12 @@ export function AIMChat() {
               placeholder={isRunning ? "AIM-OS is executing..." : "Describe your goal..."}
               rows={1}
               disabled={isRunning}
-              className="w-full resize-none bg-secondary border border-border rounded-lg px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 disabled:opacity-50 transition-all"
+              className="w-full resize-none surface-well rounded px-4 py-2.5 text-sm text-label-primary placeholder:text-label-engraved focus:outline-none focus:amber-ring disabled:opacity-50 transition-all font-mono"
               style={{ minHeight: '42px', maxHeight: '120px' }}
               onInput={(e) => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px'; }}
             />
           </div>
-          <Button onClick={() => executeGoal(input)} disabled={isRunning || !input.trim()} size="icon" className="flex-shrink-0 h-10 w-10">
+          <Button onClick={() => executeGoal(input)} disabled={isRunning || !input.trim()} size="icon" className="flex-shrink-0 h-10 w-10 control-button-primary">
             {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
