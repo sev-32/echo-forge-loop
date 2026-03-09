@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import aimosLogo from '@/assets/aimos-logo.png';
 import ReactMarkdown from 'react-markdown';
 // @ts-ignore - no type declarations available
 import remarkGfm from 'remark-gfm';
 import {
-  Send, Brain, CheckCircle2, XCircle, Zap, Shield, Sparkles, Target,
+  Brain, CheckCircle2, XCircle, Zap, Shield, Sparkles, Target,
   ArrowRight, Loader2, User, Database, RefreshCw, Lightbulb, TrendingUp,
   Layers, ScanEye, Eye
 } from 'lucide-react';
@@ -12,6 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { IconAdd } from '@/components/icons';
+import { AimOSLogo } from '@/components/icons/AimOSLogo';
+import { SendButton } from '@/components/chat/SendButton';
+import { PipelineStepIcon } from '@/components/icons/PipelineStepIcons';
 
 // Extracted modules
 import type { ChatMessage, RunData, ThoughtEntry } from '@/components/chat/types';
@@ -27,16 +29,6 @@ import { DeepReflectionPanel } from '@/components/chat/ReflectionViewer';
 // Re-export for backward compatibility
 export { useSystemEvents } from '@/components/chat/system-events';
 export type { SystemEvent } from '@/components/chat/types';
-
-// ─── Example Goals ──────────────────────────────────────
-const EXAMPLE_GOALS = [
-  { icon: "🏗️", text: "Design a scalable microservices architecture for an e-commerce platform with 10M daily users" },
-  { icon: "🔐", text: "Create a zero-trust security model for a healthcare API handling HIPAA-compliant data" },
-  { icon: "📊", text: "Analyze trade-offs between event sourcing vs CRUD for a financial trading platform" },
-  { icon: "🧪", text: "Build a comprehensive testing strategy for a real-time multiplayer game server" },
-  { icon: "🤖", text: "Design an AI agent orchestration system that can self-improve and handle failures gracefully" },
-  { icon: "⚡", text: "Optimize a Node.js API that's currently handling 100 req/s to handle 10,000 req/s" },
-];
 
 // ─── Main Chat ──────────────────────────────────────────
 export function AIMChat() {
