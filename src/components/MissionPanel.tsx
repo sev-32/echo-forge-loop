@@ -182,7 +182,7 @@ export function MissionPanel() {
     setLoading(true);
     const { error } = await supabase
       .from('missions')
-      .update({ status: newStatus })
+      .update({ status: newStatus as any })
       .eq('id', selectedMission.id);
     
     if (error) {
