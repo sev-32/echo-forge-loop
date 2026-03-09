@@ -6,7 +6,8 @@ import {
 import {
   IconIntelligence, IconMission, IconSwarm, IconHistory,
   IconMemory, IconJournal, IconCognitive, IconKnowledge,
-  IconTrust, IconSettings, IconSearch,
+  IconTrust, IconPersona, IconEvolution, IconContext,
+  IconSettings, IconSearch,
 } from "@/components/icons";
 import type { ComponentType, SVGProps } from "react";
 
