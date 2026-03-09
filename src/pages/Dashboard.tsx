@@ -16,11 +16,12 @@ import { TrustPanel } from '@/components/TrustPanel';
 import { OrchestrationPanel } from '@/components/OrchestrationPanel';
 import { CognitionPanel } from '@/components/CognitionPanel';
 import { EvolutionPanel } from '@/components/EvolutionPanel';
+import { SwarmPanel } from '@/components/SwarmPanel';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   MessageSquare, Brain, Bot, BarChart3,
   Network, Activity, FlaskConical, BookOpen, PanelRightOpen, PanelRightClose,
-  History, Database, ShieldCheck, Workflow, GitBranch
+  History, Database, ShieldCheck, Workflow, GitBranch, Layers
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -49,6 +50,7 @@ export default function Dashboard() {
               { value: 'knowledge', icon: Network, label: 'Evidence' },
               { value: 'cognition', icon: Brain, label: 'Cognition' },
               { value: 'evolution', icon: GitBranch, label: 'Evolution' },
+              { value: 'swarm', icon: Layers, label: 'Swarm' },
               { value: 'journal', icon: BookOpen, label: 'Journal' },
               { value: 'events', icon: Activity, label: 'Events' },
               { value: 'tests', icon: FlaskConical, label: 'Tests' },
@@ -85,6 +87,7 @@ export default function Dashboard() {
           {activeTab === 'knowledge' && <KnowledgeGraphPanel />}
           {activeTab === 'cognition' && <CognitionPanel />}
           {activeTab === 'evolution' && <EvolutionPanel />}
+          {activeTab === 'swarm' && <div className="h-full p-3"><SwarmPanel /></div>}
           {activeTab === 'journal' && <div className="h-full p-3"><JournalPanel /></div>}
           {activeTab === 'events' && <div className="h-full p-3"><EventLogPanel /></div>}
           {activeTab === 'tests' && (

@@ -1202,6 +1202,49 @@ Patterns: ${(styleAnalysis.patterns_observed || []).join(', ')}
           }
         }
         // ═══════════════════════════════════════════════════
+        // PHASE 2.5: POLYCASTE TRANSFORMATION (Optional)
+        // ═══════════════════════════════════════════════════
+        const enablePolycaste = true; // TODO: Make this user-configurable
+        if (enablePolycaste && synthesizedResponse) {
+          send({ type: 'thinking', phase: 'polycaste', content: 'Polycaste: Ensemble analysis + persona transformation...' });
+          
+          try {
+            const polycasteResponse = await supabase.functions.invoke('polycaste-transform', {
+              body: {
+                run_id: runId,
+                synthesized_response: synthesizedResponse,
+                user_context: {
+                  tone_preference: 'balanced',
+                  complexity: plan.overall_complexity,
+                  conversation_history: [],
+                },
+                task_outputs: taskOutputs,
+                knowledge_graph: { nodes: [], edges: [] }, // TODO: Pass actual graph
+              }
+            });
+
+            if (polycasteResponse.data && !polycasteResponse.error) {
+              const polyData = polycasteResponse.data;
+              synthesizedResponse = polyData.transformed_response;
+              send({
+                type: 'polycaste_complete',
+                persona: polyData.persona_used,
+                confidence: polyData.confidence,
+                critic_score: polyData.critic_result.score,
+                ensemble_id: polyData.ensemble_analysis_id,
+              });
+              send({ type: 'thinking', phase: 'polycaste', content: `Polycaste: Transformed via ${polyData.persona_used.name} persona (critic score: ${polyData.critic_result.score})` });
+            } else {
+              console.error('Polycaste error:', polycasteResponse.error);
+              send({ type: 'thinking', phase: 'polycaste', content: 'Polycaste: Transformation failed, using original synthesis' });
+            }
+          } catch (polyErr) {
+            console.error('Polycaste invoke error:', polyErr);
+            send({ type: 'thinking', phase: 'polycaste', content: 'Polycaste: Error, using original synthesis' });
+          }
+        }
+
+        // ═══════════════════════════════════════════════════
         // PHASE 3: DEEP SELF-REFLECTION (Critic + Witness roles)
         // ═══════════════════════════════════════════════════
         send({ type: 'thinking', phase: 'reflect', content: 'All tasks complete. Deep meta-cognitive reflection (CAS + VIF)...' });
