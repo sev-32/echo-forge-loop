@@ -1320,9 +1320,9 @@ export function AIMChat() {
   );
 }
 
-// ─── Completed Run Card ─────────────────────────────────
+// ─── Completed Run Card (with full Mission Control toggle) ─────
 function CompletedRunCard({ runData }: { runData: RunData }) {
-  const [expanded, setExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState<'summary' | 'full'>('summary');
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
   const doneCount = runData.tasks.filter(t => t.status === 'done').length;
   const scores = runData.tasks.filter(t => t.verification).map(t => t.verification!.score);
@@ -1332,41 +1332,75 @@ function CompletedRunCard({ runData }: { runData: RunData }) {
     setExpandedTasks(prev => { const next = new Set(prev); if (next.has(i)) next.delete(i); else next.add(i); return next; });
   };
 
+  // Full Mission Control view for completed runs
+  if (viewMode === 'full') {
+    return (
+      <div className="surface-well rounded overflow-hidden">
+        {/* Header with close button */}
+        <div className="panel-header">
+          <div className="flex items-center gap-2">
+            <Brain className="h-3.5 w-3.5 text-status-success" />
+            <span className="text-engraved">RUN ARCHIVE</span>
+            <Badge className="text-[8px] h-4 px-1.5 bg-status-success/10 text-status-success border-0 font-mono">
+              ✓ COMPLETE
+            </Badge>
+          </div>
+          <button onClick={() => setViewMode('summary')} className="rail-icon w-6 h-6">
+            <XCircle className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        
+        {/* Reuse MissionControl layout for completed runs */}
+        <div className="h-[500px]">
+          <MissionControlArchive runData={runData} expandedTasks={expandedTasks} toggleTask={toggleTask} />
+        </div>
+      </div>
+    );
+  }
+
+  // Summary card view
   return (
-    <div className="bg-card border border-[hsl(var(--status-success))]/20 rounded-xl shadow-sm overflow-hidden">
+    <div className="surface-well rounded overflow-hidden border-status-success/20">
       {/* Summary bar */}
-      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary/30 transition-colors">
-        <div className="w-8 h-8 rounded-lg bg-[hsl(var(--status-success))]/10 flex items-center justify-center flex-shrink-0">
-          <Brain className="h-4 w-4 text-[hsl(var(--status-success))]" />
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className="w-8 h-8 rounded surface-bezel flex items-center justify-center flex-shrink-0">
+          <Brain className="h-4 w-4 text-status-success" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-bold text-foreground">AIM-OS</span>
+            <span className="text-xs font-mono font-bold text-label-primary">AIM-OS</span>
             <ComplexityBadge complexity={runData.overallComplexity} />
-            <Badge className="text-[9px] h-4 px-1.5 bg-[hsl(var(--status-success))]/10 text-[hsl(var(--status-success))] border-[hsl(var(--status-success))]/20">
-              ✅ {doneCount}/{runData.tasks.length} • avg {avgScore}/100
+            <Badge className="text-[9px] h-4 px-1.5 bg-status-success/10 text-status-success border-0 font-mono">
+              ✓ {doneCount}/{runData.tasks.length} • avg {avgScore}
             </Badge>
-            {runData.totalTokens > 0 && <span className="text-[9px] text-muted-foreground font-mono">{runData.totalTokens.toLocaleString()} tok</span>}
+            {runData.totalTokens > 0 && <span className="text-[9px] text-label-muted font-mono">{runData.totalTokens.toLocaleString()} tok</span>}
           </div>
-          <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{runData.goal}</p>
+          <p className="text-[11px] text-label-muted mt-0.5 truncate">{runData.goal}</p>
         </div>
-        {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-      </button>
+        <button 
+          onClick={() => setViewMode('full')} 
+          className="control-button flex items-center gap-1.5"
+          title="View full breakdown"
+        >
+          <Eye className="h-3 w-3" />
+          <span>View Breakdown</span>
+        </button>
+      </div>
 
       {/* Synthesized Response — PRIMARY OUTPUT */}
       {runData.synthesizedResponse && (
-        <div className="px-4 pt-4 pb-2">
+        <div className="px-4 pt-2 pb-4 border-t border-border">
           <div className="prose prose-sm max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
               {runData.synthesizedResponse}
             </ReactMarkdown>
           </div>
           {(runData.synthesisFollowUps?.length ?? 0) > 0 && (
-            <div className="mt-3 p-2.5 rounded-lg bg-primary/5 border border-primary/15">
+            <div className="mt-3 p-2.5 surface-well rounded">
               <div className="text-[10px] font-semibold text-primary mb-1.5 flex items-center gap-1"><Lightbulb className="h-3 w-3" /> Follow-up suggestions</div>
               <div className="space-y-1">
                 {runData.synthesisFollowUps!.map((s, i) => (
-                  <div key={i} className="text-[10px] text-muted-foreground flex gap-1.5">
+                  <div key={i} className="text-[10px] text-label-muted flex gap-1.5">
                     <span className="text-primary">→</span> {s}
                   </div>
                 ))}
@@ -1376,8 +1410,8 @@ function CompletedRunCard({ runData }: { runData: RunData }) {
           {(runData.synthesisCaveats?.length ?? 0) > 0 && (
             <div className="mt-2 space-y-0.5">
               {runData.synthesisCaveats!.map((c, i) => (
-                <div key={i} className="text-[9px] text-muted-foreground/60 flex items-center gap-1">
-                  <span className="text-[hsl(var(--status-warning))]">⚠</span> {c}
+                <div key={i} className="text-[9px] text-label-muted flex items-center gap-1">
+                  <span className="text-status-warning">⚠</span> {c}
                 </div>
               ))}
             </div>
@@ -1387,51 +1421,70 @@ function CompletedRunCard({ runData }: { runData: RunData }) {
 
       {/* Audit Decision Badge */}
       {runData.auditDecision && (
-        <div className="mx-4 mt-2 p-2 rounded-lg bg-[hsl(var(--status-info))]/5 border border-[hsl(var(--status-info))]/15">
+        <div className="mx-4 mb-4 p-2 surface-well rounded">
           <div className="flex items-center gap-2 text-[9px]">
-            <ScanEye className="h-3 w-3 text-[hsl(var(--status-info))]" />
-            <span className="font-medium text-[hsl(var(--status-info))]">Audit: {runData.auditDecision.verdict}</span>
-            <span className="text-muted-foreground">• Conf: {((runData.auditDecision.confidence || 0) * 100).toFixed(0)}%</span>
-            <span className="text-muted-foreground">• Tone: {runData.auditDecision.style_analysis?.tone || '?'}</span>
-            {(runData.auditLoops || 0) > 1 && <Badge variant="outline" className="text-[8px] h-3.5 px-1">{runData.auditLoops} loops</Badge>}
+            <ScanEye className="h-3 w-3 text-status-info" />
+            <span className="font-mono font-medium text-status-info">Audit: {runData.auditDecision.verdict}</span>
+            <span className="text-label-muted">• Conf: {((runData.auditDecision.confidence || 0) * 100).toFixed(0)}%</span>
+            <span className="text-label-muted">• Tone: {runData.auditDecision.style_analysis?.tone || '?'}</span>
+            {(runData.auditLoops || 0) > 1 && <Badge variant="outline" className="text-[8px] h-3.5 px-1 border-border font-mono">{runData.auditLoops} loops</Badge>}
           </div>
         </div>
       )}
+    </div>
+  );
+}
 
-      {expanded && (
-        <div className="px-4 pb-4 space-y-3 border-t border-border/50 mt-2">
-          {/* Thoughts summary */}
-          {runData.thoughts.length > 0 && (
-            <details className="mt-3">
-              <summary className="text-[10px] font-medium text-accent cursor-pointer flex items-center gap-1">
-                <Eye className="h-3 w-3" /> View AI Consciousness ({runData.thoughts.length} thoughts)
-              </summary>
-              <div className="mt-2 max-h-48 overflow-y-auto space-y-0.5 p-2 rounded-md bg-[hsl(var(--terminal-bg))] border border-border/50">
-                {runData.thoughts.map(t => {
-                  const cfg = phaseConfig[t.phase] || phaseConfig.execute;
-                  return (
-                    <div key={t.id} className="text-[8px] font-mono text-[hsl(var(--terminal-fg))]">
-                      <span className={cfg.color}>[{cfg.label}]</span> {t.content}
-                    </div>
-                  );
-                })}
-              </div>
-            </details>
+// ─── Mission Control Archive (for completed runs) ───────
+function MissionControlArchive({ runData, expandedTasks, toggleTask }: { 
+  runData: RunData; 
+  expandedTasks: Set<number>; 
+  toggleTask: (i: number) => void;
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      {/* Phase Pipeline (all complete) */}
+      <PhasePipeline activePhase="complete" status="complete" />
+
+      {/* Goal bar */}
+      <div className="px-3 py-2 border-b border-border surface-well flex items-center gap-2">
+        <Brain className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+        <span className="text-[11px] font-mono font-medium text-label-primary truncate flex-1">{runData.goal}</span>
+        <ComplexityBadge complexity={runData.overallComplexity} />
+        {runData.totalTokens > 0 && <span className="text-[9px] text-label-muted font-mono">{runData.totalTokens.toLocaleString()} tok</span>}
+        <Badge variant="outline" className="text-[8px] h-3.5 px-1 font-mono border-border text-label-muted">{runData.runId.slice(0, 12)}</Badge>
+      </div>
+
+      {/* Three-column layout */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left: Thought Stream */}
+        <div className="w-64 flex-shrink-0 border-r border-border overflow-hidden">
+          <ThoughtStream thoughts={runData.thoughts} />
+        </div>
+
+        {/* Center: Tasks */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {runData.approach && (
+            <div className="text-[10px] text-label-muted italic px-1 mb-1">
+              <span className="text-label-primary font-medium">Approach:</span> {runData.approach}
+            </div>
           )}
 
-          {/* Tasks */}
-          <div className="space-y-1.5 mt-2">
-            {runData.tasks.map((task, i) => (
-              <TaskCard key={task.id || i} task={task} isExpanded={expandedTasks.has(i)} onToggle={() => toggleTask(i)} />
-            ))}
-          </div>
+          {runData.tasks.map((task, i) => (
+            <TaskCard key={task.id || i} task={task} isExpanded={expandedTasks.has(i)} onToggle={() => toggleTask(i)} />
+          ))}
 
-          {/* Reflection */}
+          {/* Deep Reflection Panel */}
           {runData.reflection && (
             <DeepReflectionPanel reflection={runData.reflection} knowledgeUpdate={runData.knowledgeUpdate} generatedRules={runData.generatedRules} />
           )}
         </div>
-      )}
+
+        {/* Right: Context Sidebar */}
+        <div className="w-56 flex-shrink-0 overflow-y-auto">
+          <ContextSidebar runData={runData} />
+        </div>
+      </div>
     </div>
   );
 }
