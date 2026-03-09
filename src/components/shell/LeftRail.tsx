@@ -12,7 +12,8 @@ import {
   IconEvolution,
   IconContext,
   IconSettings,
-  IconHexagon
+  IconHexagon,
+  IconSearch,
 } from "@/components/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ComponentType, SVGProps } from "react";
