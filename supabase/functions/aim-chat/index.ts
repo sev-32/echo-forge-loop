@@ -1155,6 +1155,8 @@ Patterns: ${(styleAnalysis.patterns_observed || []).join(', ')}
             }
           }], { type: "function", function: { name: "synthesize_response" } });
 
+          clearTimeout(synthTimeout);
+
           if (synthResponse.ok) {
             const synthData = await synthResponse.json();
             totalTokens += synthData.usage?.total_tokens || 0;
