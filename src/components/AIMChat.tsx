@@ -720,7 +720,7 @@ function TaskCard({ task, isExpanded, onToggle }: { task: TaskPlan; isExpanded: 
   );
 }
 
-// ─── Mission Control (full run view) ────────────────────
+// ─── Mission Control (full run view - Hasselblad) ───────
 function MissionControl({ runData }: { runData: RunData }) {
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
 
@@ -739,12 +739,12 @@ function MissionControl({ runData }: { runData: RunData }) {
       <PhasePipeline activePhase={runData.activePhase} status={runData.status} />
 
       {/* Goal bar */}
-      <div className="px-3 py-2 border-b border-border bg-card/50 flex items-center gap-2">
+      <div className="px-3 py-2 border-b border-border surface-well flex items-center gap-2">
         <Brain className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-        <span className="text-[11px] font-medium text-foreground truncate flex-1">{runData.goal}</span>
+        <span className="text-[11px] font-mono font-medium text-label-primary truncate flex-1">{runData.goal}</span>
         <ComplexityBadge complexity={runData.overallComplexity} />
-        {runData.totalTokens > 0 && <span className="text-[9px] text-muted-foreground font-mono">{runData.totalTokens.toLocaleString()} tok</span>}
-        <Badge variant="outline" className="text-[8px] h-3.5 px-1 font-mono">{runData.runId.slice(0, 12)}</Badge>
+        {runData.totalTokens > 0 && <span className="text-[9px] text-label-muted font-mono">{runData.totalTokens.toLocaleString()} tok</span>}
+        <Badge variant="outline" className="text-[8px] h-3.5 px-1 font-mono border-border text-label-muted">{runData.runId.slice(0, 12)}</Badge>
       </div>
 
       {/* Three-column layout */}
@@ -757,15 +757,15 @@ function MissionControl({ runData }: { runData: RunData }) {
         {/* Center: Tasks */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {runData.approach && (
-            <div className="text-[10px] text-muted-foreground italic px-1 mb-1">
-              <span className="text-foreground font-medium">Approach:</span> {runData.approach}
+            <div className="text-[10px] text-label-muted italic px-1 mb-1">
+              <span className="text-label-primary font-medium">Approach:</span> {runData.approach}
             </div>
           )}
 
           {runData.tasks.length === 0 && runData.status === 'planning' && (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm p-8 justify-center">
+            <div className="flex items-center gap-2 text-sm p-8 justify-center">
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              <span>Planning tasks...</span>
+              <span className="text-engraved">PLANNING TASKS</span>
             </div>
           )}
 
