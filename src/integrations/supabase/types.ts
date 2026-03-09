@@ -387,6 +387,50 @@ export type Database = {
           },
         ]
       }
+      ensemble_analyses: {
+        Row: {
+          archivist_context: string
+          confidence_score: number
+          created_at: string
+          critic_findings: Json
+          id: string
+          researcher_grounding: string
+          run_id: string
+          synthesizer_draft: string
+          witness_id: string | null
+        }
+        Insert: {
+          archivist_context: string
+          confidence_score?: number
+          created_at?: string
+          critic_findings?: Json
+          id?: string
+          researcher_grounding: string
+          run_id: string
+          synthesizer_draft: string
+          witness_id?: string | null
+        }
+        Update: {
+          archivist_context?: string
+          confidence_score?: number
+          created_at?: string
+          critic_findings?: Json
+          id?: string
+          researcher_grounding?: string
+          run_id?: string
+          synthesizer_draft?: string
+          witness_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ensemble_analyses_witness_id_fkey"
+            columns: ["witness_id"]
+            isOneToOne: false
+            referencedRelation: "witness_envelopes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           created_at: string
@@ -681,6 +725,83 @@ export type Database = {
           reason?: string
           run_id?: string | null
           snapshot_hash?: string
+        }
+        Relationships: []
+      }
+      persona_history: {
+        Row: {
+          axis_scores: Json
+          created_at: string
+          id: string
+          persona_selected: string
+          rationale: string
+          run_id: string
+          user_feedback: string | null
+        }
+        Insert: {
+          axis_scores?: Json
+          created_at?: string
+          id?: string
+          persona_selected: string
+          rationale: string
+          run_id: string
+          user_feedback?: string | null
+        }
+        Update: {
+          axis_scores?: Json
+          created_at?: string
+          id?: string
+          persona_selected?: string
+          rationale?: string
+          run_id?: string
+          user_feedback?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "persona_history_persona_selected_fkey"
+            columns: ["persona_selected"]
+            isOneToOne: false
+            referencedRelation: "persona_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      persona_profiles: {
+        Row: {
+          axis_edge: number
+          axis_formality: number
+          axis_pedagogy: number
+          axis_wit: number
+          created_at: string
+          example_phrases: string[]
+          id: string
+          name: string
+          updated_at: string
+          voice_characteristics: Json
+        }
+        Insert: {
+          axis_edge: number
+          axis_formality: number
+          axis_pedagogy: number
+          axis_wit: number
+          created_at?: string
+          example_phrases?: string[]
+          id?: string
+          name: string
+          updated_at?: string
+          voice_characteristics?: Json
+        }
+        Update: {
+          axis_edge?: number
+          axis_formality?: number
+          axis_pedagogy?: number
+          axis_wit?: number
+          created_at?: string
+          example_phrases?: string[]
+          id?: string
+          name?: string
+          updated_at?: string
+          voice_characteristics?: Json
         }
         Relationships: []
       }
