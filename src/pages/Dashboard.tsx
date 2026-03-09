@@ -29,6 +29,9 @@ export default function Dashboard() {
         <PanelErrorBoundary fallbackTitle="Chat">
           {activeTab === 'chat' && <AIMChat />}
         </PanelErrorBoundary>
+        <PanelErrorBoundary fallbackTitle="Deep Research">
+          {activeTab === 'research' && <DeepResearchPanel />}
+        </PanelErrorBoundary>
         <PanelErrorBoundary fallbackTitle="Run History">
           {activeTab === 'runs' && <RunHistoryPanel />}
         </PanelErrorBoundary>
