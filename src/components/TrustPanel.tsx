@@ -1,13 +1,14 @@
 // ============================================
 // Trust Panel — VIF Witness Envelope Browser + κ-Gate + ECE
-// Hasselblad X2D Aesthetic
+// Hasselblad X2D Aesthetic + Precision Instruments
 // ============================================
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { vif, type WitnessEnvelope, type ConfidenceBand, type KappaGateResult } from '@/lib/vif';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { GaugeRadial, Sparkline, CalibrationCurve } from '@/components/ui/instruments';
 import { ShieldCheck, RefreshCw, Eye, Target, AlertTriangle, CheckCircle, XCircle, MinusCircle } from 'lucide-react';
 
 const BAND_COLORS: Record<ConfidenceBand, string> = {
@@ -50,9 +51,41 @@ export function TrustPanel() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // Confidence trend sparkline
+  const confTrend = useMemo(() => 
+    witnesses.slice(0, 30).map(w => w.confidence_score * 100).reverse(), 
+    [witnesses]
+  );
+
+  // ECE calibration bins from witnesses
+  const eceBins = useMemo(() => {
+    if (witnesses.length === 0) return [];
+    const binCount = 10;
+    const bins: Record<number, { sum_predicted: number; sum_actual: number; count: number }> = {};
+    for (let i = 0; i < binCount; i++) bins[i] = { sum_predicted: 0, sum_actual: 0, count: 0 };
+    
+    witnesses.forEach(w => {
+      const binIdx = Math.min(Math.floor(w.confidence_score * binCount), binCount - 1);
+      bins[binIdx].sum_predicted += w.confidence_score;
+      bins[binIdx].sum_actual += w.actual_accuracy ?? w.confidence_score;
+      bins[binIdx].count += 1;
+    });
+    
+    return Object.entries(bins)
+      .filter(([, b]) => b.count > 0)
+      .map(([idx, b]) => ({
+        predicted: b.sum_predicted / b.count,
+        actual: b.sum_actual / b.count,
+        count: b.count,
+      }));
+  }, [witnesses]);
+
+  // κ-pass rate
+  const kappaPassRate = stats ? ((stats.byGateResult.pass || 0) / Math.max(1, stats.totalWitnesses) * 100) : 0;
+
   return (
     <div className="h-full flex gap-3 p-3">
-      {/* Left: Witness list */}
+      {/* Left: Witness list + instruments */}
       <div className="flex-1 flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-3.5 w-3.5 text-primary" />
@@ -63,13 +96,30 @@ export function TrustPanel() {
           </Button>
         </div>
 
-        {/* Summary stats — gauge cluster */}
+        {/* Gauge Cluster */}
         {stats && stats.totalWitnesses > 0 && (
-          <div className="grid grid-cols-4 gap-2">
-            <GaugeCard label="Witnesses" value={stats.totalWitnesses.toString()} icon={Eye} />
-            <GaugeCard label="Avg Conf." value={`${(stats.avgConfidence * 100).toFixed(0)}%`} icon={Target} />
-            <GaugeCard label="κ-Pass" value={`${stats.byGateResult.pass ? ((stats.byGateResult.pass / stats.totalWitnesses) * 100).toFixed(0) : 0}%`} icon={CheckCircle} />
-            <GaugeCard label="Abstain" value={(stats.byGateResult.abstain || 0).toString()} icon={AlertTriangle} />
+          <div className="surface-well rounded p-3">
+            <div className="flex items-center justify-around">
+              <GaugeRadial
+                value={stats.avgConfidence * 100}
+                label="AVG CONF"
+                sublabel={`${stats.totalWitnesses} witnesses`}
+                size={68}
+              />
+              <GaugeRadial
+                value={kappaPassRate}
+                label="κ-PASS"
+                size={68}
+                color="success"
+              />
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-[8px] font-mono text-label-muted tracking-wider">CONF TREND</span>
+                {confTrend.length >= 3 && (
+                  <Sparkline data={confTrend} width={100} height={28} color="primary" showDots fill />
+                )}
+                {confTrend.length < 3 && <span className="text-[8px] text-label-engraved">insufficient data</span>}
+              </div>
+            </div>
           </div>
         )}
 
@@ -132,10 +182,20 @@ export function TrustPanel() {
         </ScrollArea>
       </div>
 
-      {/* Right: Detail */}
-      <div className="w-72">
+      {/* Right: Detail + ECE Curve */}
+      <div className="w-72 flex flex-col gap-2">
+        {/* ECE Calibration Curve */}
+        {eceBins.length > 0 && (
+          <div className="panel">
+            <div className="p-2">
+              <CalibrationCurve bins={eceBins} width={250} height={150} />
+            </div>
+          </div>
+        )}
+
+        {/* Witness Detail */}
         {selected ? (
-          <div className="panel h-full overflow-hidden">
+          <div className="panel flex-1 overflow-hidden">
             <div className="panel-header">
               <div className="flex items-center gap-1.5">
                 <Eye className="h-3 w-3 text-primary" />
@@ -166,7 +226,7 @@ export function TrustPanel() {
             </ScrollArea>
           </div>
         ) : (
-          <div className="panel h-full flex items-center justify-center">
+          <div className="panel flex-1 flex items-center justify-center">
             <div className="text-center">
               <Eye className="w-5 h-5 text-label-engraved mx-auto mb-2" />
               <span className="text-engraved">SELECT ENVELOPE</span>
@@ -174,16 +234,6 @@ export function TrustPanel() {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function GaugeCard({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Eye }) {
-  return (
-    <div className="surface-well rounded p-2 text-center">
-      <Icon className="h-3 w-3 mx-auto text-primary mb-0.5" />
-      <div className="text-[11px] font-mono font-bold text-label-primary">{value}</div>
-      <div className="text-engraved">{label}</div>
     </div>
   );
 }
