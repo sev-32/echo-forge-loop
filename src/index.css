@@ -25,10 +25,10 @@
     --popover: 220 12% 8%;
     --popover-foreground: 40 5% 90%;
 
-    /* Primary: Hasselblad Amber/Orange accent */
-    --primary: 30 95% 50%;
+    /* Primary: Deep Azure Blue accent */
+    --primary: 210 90% 52%;
     --primary-foreground: 220 15% 4%;
-    --primary-glow: 30 100% 55%;
+    --primary-glow: 200 90% 60%;
 
     /* Secondary: Gunmetal aluminum */
     --secondary: 220 10% 12%;
