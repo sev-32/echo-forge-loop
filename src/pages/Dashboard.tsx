@@ -17,6 +17,7 @@ import { OrchestrationPanel } from '@/components/OrchestrationPanel';
 import { CognitionPanel } from '@/components/CognitionPanel';
 import { EvolutionPanel } from '@/components/EvolutionPanel';
 import { SwarmPanel } from '@/components/SwarmPanel';
+import { MissionPanel } from '@/components/MissionPanel';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   MessageSquare, Brain, Bot, BarChart3,
