@@ -8,6 +8,9 @@ import {
   IconCognitive,
   IconKnowledge,
   IconTrust,
+  IconPersona,
+  IconEvolution,
+  IconContext,
   IconSettings,
   IconHexagon
 } from "@/components/icons";
