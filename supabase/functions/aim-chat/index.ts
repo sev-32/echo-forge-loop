@@ -1154,7 +1154,7 @@ Patterns: ${(styleAnalysis.patterns_observed || []).join(', ')}
                 required: ["response", "confidence", "follow_up_suggestions"]
               }
             }
-          }], { type: "function", function: { name: "synthesize_response" } });
+          }], { type: "function", function: { name: "synthesize_response" } }, false, synthAbort.signal);
 
           clearTimeout(synthTimeout);
 

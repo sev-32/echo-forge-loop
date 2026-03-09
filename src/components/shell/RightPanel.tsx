@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSystemEvents } from "@/hooks/use-orchestration";
+import { useLiveMetrics } from "@/hooks/use-live-metrics";
 import {
   IconActivity, IconChevronRight, IconChevronLeft,
   IconRadio, IconClock, IconToken
 } from "@/components/icons";
+import { GaugeRadial } from "@/components/ui/instruments";
 
 interface RightPanelProps {
   isOpen: boolean;
@@ -13,6 +15,7 @@ interface RightPanelProps {
 
 export function RightPanel({ isOpen, onToggle }: RightPanelProps) {
   const events = useSystemEvents();
+  const { metrics } = useLiveMetrics(4000);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,12 +51,43 @@ export function RightPanel({ isOpen, onToggle }: RightPanelProps) {
         </button>
       </div>
 
-      {/* Stats Row — CNC gauge cluster */}
+      {/* Live Gauge Cluster — bound to real DB metrics */}
       <div className="grid grid-cols-3 gap-2 p-3 border-b border-border">
-        <GaugeCell icon={IconActivity} label="Events" value={events.length.toString()} />
-        <GaugeCell icon={IconClock} label="Uptime" value="--" />
-        <GaugeCell icon={IconToken} label="Tasks" value="--" />
+        <GaugeCell label="Runs" value={metrics.totalRuns} max={100} />
+        <GaugeCell label="Atoms" value={metrics.atoms} max={500} />
+        <GaugeCell label="Nodes" value={metrics.knowledgeNodes} max={200} />
       </div>
+
+      {/* Secondary Stats */}
+      <div className="grid grid-cols-4 gap-1 px-3 py-2 border-b border-border">
+        <MiniStat label="Tasks" value={metrics.totalTasks} />
+        <MiniStat label="Rules" value={metrics.activeRules} />
+        <MiniStat label="Edges" value={metrics.knowledgeEdges} />
+        <MiniStat label="⚡" value={metrics.witnesses} />
+      </div>
+
+      {/* Cognitive Load Indicator */}
+      {metrics.cognitiveLoad > 0 && (
+        <div className="px-3 py-2 border-b border-border">
+          <div className="flex items-center justify-between text-[9px] mb-1">
+            <span className="text-engraved">COGNITIVE LOAD</span>
+            <span className={`font-mono ${metrics.cognitiveLoad > 0.7 ? 'text-status-error' : metrics.cognitiveLoad > 0.4 ? 'text-status-warning' : 'text-status-success'}`}>
+              {(metrics.cognitiveLoad * 100).toFixed(0)}%
+            </span>
+          </div>
+          <div className="h-1 w-full rounded-full bg-secondary overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                metrics.cognitiveLoad > 0.7 ? 'bg-status-error' : metrics.cognitiveLoad > 0.4 ? 'bg-status-warning' : 'bg-status-success'
+              }`}
+              style={{ width: `${Math.min(100, metrics.cognitiveLoad * 100)}%` }}
+            />
+          </div>
+          {metrics.driftDetected && (
+            <div className="text-[8px] text-status-warning mt-1 font-mono">⚠ DRIFT DETECTED</div>
+          )}
+        </div>
+      )}
 
       {/* Event Stream */}
       <ScrollArea className="flex-1" ref={scrollRef}>
@@ -74,12 +108,22 @@ export function RightPanel({ isOpen, onToggle }: RightPanelProps) {
   );
 }
 
-function GaugeCell({ icon: Icon, label, value }: { icon: typeof IconActivity; label: string; value: string }) {
+function GaugeCell({ label, value, max }: { label: string; value: number; max: number }) {
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
   return (
     <div className="surface-well rounded p-2 text-center">
-      <Icon size={12} className="text-primary mx-auto mb-1" />
-      <div className="text-xs font-mono font-semibold text-label-primary">{value}</div>
+      <GaugeRadial value={pct} size={44} strokeWidth={3} showTicks={false} />
+      <div className="text-[10px] font-mono font-semibold text-label-primary mt-1">{value}</div>
       <div className="text-engraved">{label}</div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="text-center">
+      <div className="text-[10px] font-mono font-semibold text-label-primary">{value}</div>
+      <div className="text-[8px] text-label-engraved uppercase">{label}</div>
     </div>
   );
 }
