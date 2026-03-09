@@ -50,6 +50,7 @@ export default function Dashboard() {
               { value: 'knowledge', icon: Network, label: 'Evidence' },
               { value: 'cognition', icon: Brain, label: 'Cognition' },
               { value: 'evolution', icon: GitBranch, label: 'Evolution' },
+              { value: 'swarm', icon: Layers, label: 'Swarm' },
               { value: 'journal', icon: BookOpen, label: 'Journal' },
               { value: 'events', icon: Activity, label: 'Events' },
               { value: 'tests', icon: FlaskConical, label: 'Tests' },
