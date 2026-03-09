@@ -1,14 +1,15 @@
 // ============================================
 // Cognition Panel — CAS Meta-Cognitive Monitor
-// Hasselblad X2D Aesthetic
+// Hasselblad X2D Aesthetic + Precision Instruments
 // ============================================
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { cas, type CognitiveSnapshot, type FailureMode } from '@/lib/cas';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
+import { GaugeRadial, Sparkline } from '@/components/ui/instruments';
 import {
   Brain, RefreshCw, AlertTriangle, Activity, Eye, TrendingDown,
   Gauge, Focus, Zap
@@ -51,6 +52,12 @@ export function CognitionPanel() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // Sparkline data from snapshots
+  const loadTrend = useMemo(() => snapshots.slice(-20).map(s => s.cognitive_load * 100).reverse(), [snapshots]);
+  const consistencyTrend = useMemo(() => snapshots.slice(-20).map(s => s.self_consistency_score * 100).reverse(), [snapshots]);
+  const depthTrend = useMemo(() => snapshots.slice(-20).map(s => s.reasoning_depth).reverse(), [snapshots]);
+  const driftTrend = useMemo(() => snapshots.slice(-20).map(s => s.drift_score * 100).reverse(), [snapshots]);
+
   return (
     <div className="h-full flex flex-col gap-3 p-3">
       {/* Header */}
@@ -63,16 +70,46 @@ export function CognitionPanel() {
         </Button>
       </div>
 
-      {/* Stats — CNC gauge cluster */}
+      {/* Radial Gauge Cluster — CNC instrument panel */}
       {stats && (
-        <div className="grid grid-cols-5 gap-2">
-          <GaugeCard icon={Activity} label="Snapshots" value={stats.totalSnapshots.toString()} />
-          <GaugeCard icon={Gauge} label="Avg Load" value={`${(stats.avgCognitiveLoad * 100).toFixed(0)}%`}
-            highlight={stats.avgCognitiveLoad > 0.7 ? 'error' : stats.avgCognitiveLoad > 0.4 ? 'warning' : 'success'} />
-          <GaugeCard icon={TrendingDown} label="Drift Alerts" value={stats.driftCount.toString()}
-            highlight={stats.driftCount > 0 ? 'warning' : 'success'} />
-          <GaugeCard icon={Eye} label="Consistency" value={`${(stats.avgConsistency * 100).toFixed(0)}%`} />
-          <GaugeCard icon={Focus} label="Uncertainty" value={`${(stats.avgUncertaintyAwareness * 100).toFixed(0)}%`} />
+        <div className="surface-well rounded p-3">
+          <div className="flex items-center justify-around">
+            <GaugeRadial
+              value={stats.avgCognitiveLoad * 100}
+              label="COG LOAD"
+              sublabel={`${stats.totalSnapshots} samples`}
+              size={72}
+              color={stats.avgCognitiveLoad > 0.7 ? 'error' : stats.avgCognitiveLoad > 0.4 ? 'warning' : 'success'}
+            />
+            <GaugeRadial
+              value={stats.avgConsistency * 100}
+              label="CONSISTENCY"
+              size={72}
+            />
+            <GaugeRadial
+              value={stats.avgUncertaintyAwareness * 100}
+              label="UNCERTAINTY"
+              size={72}
+              color="info"
+            />
+            <GaugeRadial
+              value={Math.max(0, 100 - stats.driftCount * 10)}
+              label="STABILITY"
+              sublabel={`${stats.driftCount} drifts`}
+              size={72}
+              color={stats.driftCount > 3 ? 'error' : stats.driftCount > 0 ? 'warning' : 'success'}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Trend Sparklines Row */}
+      {snapshots.length >= 3 && (
+        <div className="grid grid-cols-4 gap-2">
+          <TrendCard label="Cog Load" data={loadTrend} color="warning" />
+          <TrendCard label="Consistency" data={consistencyTrend} color="success" />
+          <TrendCard label="Depth" data={depthTrend} color="info" />
+          <TrendCard label="Drift" data={driftTrend} color="error" />
         </div>
       )}
 
@@ -200,19 +237,15 @@ export function CognitionPanel() {
   );
 }
 
-function GaugeCard({ icon: Icon, label, value, highlight }: { icon: typeof Activity; label: string; value: string; highlight?: string }) {
-  const colorMap: Record<string, string> = {
-    success: 'text-status-success',
-    warning: 'text-status-warning',
-    error: 'text-status-error',
-  };
-  const color = highlight ? colorMap[highlight] : 'text-label-primary';
-  
+function TrendCard({ label, data, color }: { label: string; data: number[]; color: 'primary' | 'success' | 'warning' | 'error' | 'info' }) {
+  const latest = data.length > 0 ? data[data.length - 1] : 0;
   return (
-    <div className="surface-well rounded p-2 text-center">
-      <Icon className={`h-3 w-3 mx-auto mb-0.5 ${color}`} />
-      <div className={`text-[11px] font-mono font-bold ${color}`}>{value}</div>
-      <div className="text-engraved">{label}</div>
+    <div className="surface-well rounded p-2">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[8px] font-mono text-label-muted uppercase tracking-wider">{label}</span>
+        <span className="text-[9px] font-mono font-bold text-label-primary">{latest.toFixed(0)}</span>
+      </div>
+      <Sparkline data={data} width={120} height={20} color={color} showDots fill />
     </div>
   );
 }
