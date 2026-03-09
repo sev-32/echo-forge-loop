@@ -7,7 +7,7 @@ import {
   IconActivity,
   IconRadio
 } from "@/components/icons";
-import aimosLogo from "@/assets/aimos-logo.png";
+import { AimOSLogo } from "@/components/icons/AimOSLogo";
 
 interface TopBarProps {
   systemStatus?: 'idle' | 'active' | 'processing' | 'error';
@@ -32,9 +32,9 @@ export function TopBar({ systemStatus = 'idle', runId }: TopBarProps) {
         {/* Logo Mark */}
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded surface-bezel flex items-center justify-center relative overflow-hidden">
-            <img src={aimosLogo} alt="AIM-OS" className="w-7 h-7 object-contain" />
+            <AimOSLogo size={26} />
             {systemStatus === 'active' && (
-              <div className="absolute inset-0 rounded amber-glow opacity-50" />
+              <div className="absolute inset-0 rounded surface-glow opacity-50" />
             )}
           </div>
           <div className="flex flex-col">

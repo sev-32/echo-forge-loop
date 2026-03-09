@@ -25,10 +25,10 @@
     --popover: 220 12% 8%;
     --popover-foreground: 40 5% 90%;
 
-    /* Primary: Hasselblad Amber/Orange accent */
-    --primary: 30 95% 50%;
+    /* Primary: Deep Azure Blue accent */
+    --primary: 210 90% 52%;
     --primary-foreground: 220 15% 4%;
-    --primary-glow: 30 100% 55%;
+    --primary-glow: 200 90% 60%;
 
     /* Secondary: Gunmetal aluminum */
     --secondary: 220 10% 12%;
@@ -50,7 +50,7 @@
     --border: 220 10% 14%;
     --border-highlight: 220 8% 22%;
     --input: 220 10% 12%;
-    --ring: 30 95% 50%;
+    --ring: 210 90% 52%;
 
     --radius: 0.25rem;
 
@@ -60,31 +60,31 @@
     --status-error: 0 70% 50%;
     --status-info: 200 85% 50%;
     --status-pending: 260 55% 50%;
-    --status-active: 30 95% 50%;
-    --status-blocked: 25 90% 50%;
+    --status-active: 210 90% 52%;
+    --status-blocked: 0 70% 50%;
 
     /* === TERMINAL COLORS === */
     --terminal-bg: 220 15% 3%;
-    --terminal-fg: 30 80% 70%;
-    --terminal-cursor: 30 95% 50%;
-    --terminal-selection: 30 50% 15%;
+    --terminal-fg: 200 80% 70%;
+    --terminal-cursor: 210 90% 52%;
+    --terminal-selection: 210 50% 15%;
 
     /* === CODE COLORS === */
     --code-bg: 220 12% 5%;
     --code-fg: 40 5% 82%;
     --code-comment: 220 8% 40%;
-    --code-keyword: 30 90% 60%;
+    --code-keyword: 200 90% 60%;
     --code-string: 142 60% 55%;
     --code-number: 38 90% 60%;
 
     /* === DAG/GRAPH COLORS === */
     --node-queued: 220 10% 30%;
-    --node-active: 30 95% 50%;
+    --node-active: 210 90% 52%;
     --node-done: 142 70% 42%;
     --node-failed: 0 70% 50%;
-    --node-blocked: 25 90% 50%;
+    --node-blocked: 0 70% 50%;
     --edge-default: 220 10% 25%;
-    --edge-active: 30 95% 50%;
+    --edge-active: 210 90% 52%;
 
     /* === BUDGET METER === */
     --budget-safe: 142 70% 42%;
@@ -107,12 +107,12 @@
     /* === SIDEBAR === */
     --sidebar-background: 220 15% 5%;
     --sidebar-foreground: 40 5% 80%;
-    --sidebar-primary: 30 95% 50%;
+    --sidebar-primary: 210 90% 52%;
     --sidebar-primary-foreground: 220 15% 4%;
     --sidebar-accent: 220 10% 10%;
     --sidebar-accent-foreground: 40 5% 90%;
     --sidebar-border: 220 10% 12%;
-    --sidebar-ring: 30 95% 50%;
+    --sidebar-ring: 210 90% 52%;
 
     /* === TYPOGRAPHY === */
     --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
@@ -229,7 +229,7 @@
     text-shadow: 0 0 10px hsl(var(--label-primary) / 0.3);
   }
 
-  /* === AMBER ACCENT UTILITIES === */
+  /* === AZURE ACCENT UTILITIES === */
   .amber-glow {
     box-shadow: 
       0 0 4px hsl(var(--primary) / 0.4),
@@ -251,11 +251,11 @@
   }
 
   /* === STATUS PULSE === */
-  .pulse-amber {
-    animation: pulse-amber 2s ease-in-out infinite;
+  .pulse-amber, .pulse-azure {
+    animation: pulse-azure 2s ease-in-out infinite;
   }
 
-  @keyframes pulse-amber {
+  @keyframes pulse-azure {
     0%, 100% { 
       box-shadow: 0 0 4px hsl(var(--primary) / 0.4);
     }
@@ -353,18 +353,18 @@
     background: linear-gradient(
       180deg,
       hsl(var(--primary)) 0%,
-      hsl(30 90% 42%) 100%
+      hsl(215 85% 42%) 100%
     );
     color: hsl(var(--primary-foreground));
     box-shadow: 
-      inset 0 1px 0 hsl(30 100% 65% / 0.4),
+      inset 0 1px 0 hsl(200 90% 65% / 0.4),
       0 1px 2px hsl(0 0% 0% / 0.4),
       0 0 8px hsl(var(--primary) / 0.2);
   }
 
   .control-button-primary:hover {
     box-shadow: 
-      inset 0 1px 0 hsl(30 100% 70% / 0.5),
+      inset 0 1px 0 hsl(200 90% 70% / 0.5),
       0 1px 2px hsl(0 0% 0% / 0.4),
       0 0 16px hsl(var(--primary) / 0.4);
   }
