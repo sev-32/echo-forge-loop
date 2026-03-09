@@ -60,8 +60,8 @@
     --status-error: 0 70% 50%;
     --status-info: 200 85% 50%;
     --status-pending: 260 55% 50%;
-    --status-active: 30 95% 50%;
-    --status-blocked: 25 90% 50%;
+    --status-active: 210 90% 52%;
+    --status-blocked: 0 70% 50%;
 
     /* === TERMINAL COLORS === */
     --terminal-bg: 220 15% 3%;
