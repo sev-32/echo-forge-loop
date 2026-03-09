@@ -84,7 +84,7 @@
     --node-failed: 0 70% 50%;
     --node-blocked: 0 70% 50%;
     --edge-default: 220 10% 25%;
-    --edge-active: 30 95% 50%;
+    --edge-active: 210 90% 52%;
 
     /* === BUDGET METER === */
     --budget-safe: 142 70% 42%;
