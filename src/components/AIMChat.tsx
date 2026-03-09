@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import aimosLogo from '@/assets/aimos-logo.png';
 import ReactMarkdown from 'react-markdown';
 // @ts-ignore - no type declarations available
 import remarkGfm from 'remark-gfm';
 import {
-  Send, Brain, CheckCircle2, XCircle, Zap, Shield, Sparkles, Target,
+  Brain, CheckCircle2, XCircle, Zap, Shield, Sparkles, Target,
   ArrowRight, Loader2, User, Database, RefreshCw, Lightbulb, TrendingUp,
   Layers, ScanEye, Eye
 } from 'lucide-react';
@@ -12,6 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { IconAdd } from '@/components/icons';
+import { AimOSLogo } from '@/components/icons/AimOSLogo';
+import { SendButton } from '@/components/chat/SendButton';
+import { PipelineStepIcon } from '@/components/icons/PipelineStepIcons';
 
 // Extracted modules
 import type { ChatMessage, RunData, ThoughtEntry } from '@/components/chat/types';
@@ -27,16 +29,6 @@ import { DeepReflectionPanel } from '@/components/chat/ReflectionViewer';
 // Re-export for backward compatibility
 export { useSystemEvents } from '@/components/chat/system-events';
 export type { SystemEvent } from '@/components/chat/types';
-
-// ─── Example Goals ──────────────────────────────────────
-const EXAMPLE_GOALS = [
-  { icon: "🏗️", text: "Design a scalable microservices architecture for an e-commerce platform with 10M daily users" },
-  { icon: "🔐", text: "Create a zero-trust security model for a healthcare API handling HIPAA-compliant data" },
-  { icon: "📊", text: "Analyze trade-offs between event sourcing vs CRUD for a financial trading platform" },
-  { icon: "🧪", text: "Build a comprehensive testing strategy for a real-time multiplayer game server" },
-  { icon: "🤖", text: "Design an AI agent orchestration system that can self-improve and handle failures gracefully" },
-  { icon: "⚡", text: "Optimize a Node.js API that's currently handling 100 req/s to handle 10,000 req/s" },
-];
 
 // ─── Main Chat ──────────────────────────────────────────
 export function AIMChat() {
@@ -222,8 +214,8 @@ export function AIMChat() {
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-8 px-4 py-8">
               <div className="text-center space-y-4">
-                <div className="w-20 h-20 rounded-lg surface-bezel flex items-center justify-center mx-auto amber-glow overflow-hidden">
-                  <img src={aimosLogo} alt="AIM-OS" className="w-16 h-16 object-contain" />
+                <div className="w-20 h-20 rounded-lg surface-bezel flex items-center justify-center mx-auto surface-glow overflow-hidden">
+                  <AimOSLogo size={56} />
                 </div>
                 <div>
                   <h2 className="text-2xl font-mono font-bold tracking-[0.1em] text-label-primary">AIM-OS</h2>
@@ -238,36 +230,26 @@ export function AIMChat() {
 
               <div className="flex items-center gap-2 text-xs flex-wrap justify-center">
                 {[
-                  { icon: Database, label: 'Memory', desc: 'Load past lessons' },
-                  { icon: Target, label: 'Plan', desc: 'Decompose + calibrate' },
-                  { icon: Zap, label: 'Execute', desc: 'AI runs each task' },
-                  { icon: Shield, label: 'Verify', desc: 'Check criteria' },
-                  { icon: RefreshCw, label: 'Retry', desc: 'Diagnose & fix' },
-                  { icon: ScanEye, label: 'Audit', desc: 'Review + decide' },
-                  { icon: Layers, label: 'Synthesize', desc: 'Polish response' },
-                  { icon: Sparkles, label: 'Reflect', desc: 'Meta-cognition' },
-                  { icon: TrendingUp, label: 'Evolve', desc: 'Generate rules' },
+                  { step: 'memory' as const, label: 'Memory', desc: 'Load past lessons' },
+                  { step: 'plan' as const, label: 'Plan', desc: 'Decompose + calibrate' },
+                  { step: 'execute' as const, label: 'Execute', desc: 'AI runs each task' },
+                  { step: 'verify' as const, label: 'Verify', desc: 'Check criteria' },
+                  { step: 'retry' as const, label: 'Retry', desc: 'Diagnose & fix' },
+                  { step: 'audit' as const, label: 'Audit', desc: 'Review + decide' },
+                  { step: 'synthesize' as const, label: 'Synthesize', desc: 'Polish response' },
+                  { step: 'reflect' as const, label: 'Reflect', desc: 'Meta-cognition' },
+                  { step: 'evolve' as const, label: 'Evolve', desc: 'Generate rules' },
                 ].map((step, i) => (
                   <div key={i} className="flex items-center gap-2">
                     {i > 0 && <ArrowRight className="h-3 w-3 text-border" />}
                     <div className="flex items-center gap-1.5 px-2.5 py-1.5 surface-well rounded">
-                      <step.icon className="h-3.5 w-3.5 text-primary" />
+                      <PipelineStepIcon step={step.step} size={14} />
                       <div>
                         <div className="font-mono font-semibold text-label-primary text-[10px] tracking-wide">{step.label.toUpperCase()}</div>
                         <div className="text-[9px] text-label-muted">{step.desc}</div>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-w-3xl w-full">
-                {EXAMPLE_GOALS.map((goal, i) => (
-                  <button key={i} onClick={() => executeGoal(goal.text)}
-                    className="group text-left text-xs p-3.5 surface-well rounded hover:amber-glow transition-all duration-200">
-                    <span className="text-sm">{goal.icon}</span>
-                    <p className="text-label-muted group-hover:text-label-primary transition-colors mt-1 leading-relaxed line-clamp-2">{goal.text}</p>
-                  </button>
                 ))}
               </div>
             </div>
@@ -323,9 +305,7 @@ export function AIMChat() {
                 onInput={(e) => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px'; }}
               />
             </div>
-            <Button onClick={() => executeGoal(input)} disabled={isRunning || !input.trim()} size="icon" className="flex-shrink-0 h-10 w-10 control-button-primary">
-              {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
+            <SendButton onClick={() => executeGoal(input)} disabled={isRunning || !input.trim()} isLoading={isRunning} />
           </div>
         </div>
       </div>
