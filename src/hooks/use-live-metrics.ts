@@ -1,8 +1,8 @@
 // ============================================
-// Real-time Metrics Hook — binds DB data to UI
+// Real-time Metrics Hook — Supabase Realtime + polling fallback
 // ============================================
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface LiveMetrics {
@@ -35,6 +35,7 @@ const EMPTY_METRICS: LiveMetrics = {
 export function useLiveMetrics(pollIntervalMs = 5000) {
   const [metrics, setMetrics] = useState<LiveMetrics>(EMPTY_METRICS);
   const [loading, setLoading] = useState(true);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const refresh = useCallback(async () => {
     try {
@@ -94,11 +95,35 @@ export function useLiveMetrics(pollIntervalMs = 5000) {
     }
   }, []);
 
+  // Debounced refresh for realtime events
+  const debouncedRefresh = useCallback(() => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(refresh, 300);
+  }, [refresh]);
+
   useEffect(() => {
     refresh();
+
+    // Subscribe to realtime changes on key tables for instant updates
+    const channel = supabase
+      .channel('live-metrics')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'run_traces' }, debouncedRefresh)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'run_traces' }, debouncedRefresh)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'cognitive_snapshots' }, debouncedRefresh)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'atoms' }, debouncedRefresh)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'witness_envelopes' }, debouncedRefresh)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'knowledge_nodes' }, debouncedRefresh)
+      .subscribe();
+
+    // Fallback polling at slower rate
     const interval = setInterval(refresh, pollIntervalMs);
-    return () => clearInterval(interval);
-  }, [refresh, pollIntervalMs]);
+
+    return () => {
+      clearInterval(interval);
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [refresh, debouncedRefresh, pollIntervalMs]);
 
   return { metrics, loading, refresh };
 }
