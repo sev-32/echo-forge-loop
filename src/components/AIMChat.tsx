@@ -1210,8 +1210,8 @@ export function AIMChat() {
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-8 px-4 py-8">
             <div className="text-center space-y-4">
-              <div className="w-20 h-20 rounded-lg surface-bezel flex items-center justify-center mx-auto amber-glow">
-                <Brain className="h-10 w-10 text-primary" />
+              <div className="w-20 h-20 rounded-lg surface-bezel flex items-center justify-center mx-auto amber-glow overflow-hidden">
+                <img src={aimosLogo} alt="AIM-OS" className="w-16 h-16 object-contain" />
               </div>
               <div>
                 <h2 className="text-2xl font-mono font-bold tracking-[0.1em] text-label-primary">AIM-OS</h2>
