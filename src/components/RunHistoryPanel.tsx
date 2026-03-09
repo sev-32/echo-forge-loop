@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
 import {
   Brain, ChevronDown, ChevronRight, Clock, Zap, Target, Shield, Sparkles,
   TrendingUp, Database, RefreshCw, CheckCircle2, XCircle, BarChart3,
