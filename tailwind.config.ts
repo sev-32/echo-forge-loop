@@ -19,6 +19,7 @@ export default {
       },
       colors: {
         border: "hsl(var(--border))",
+        "border-highlight": "hsl(var(--border-highlight))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
@@ -26,6 +27,7 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          glow: "hsl(var(--primary-glow))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -61,7 +63,7 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Status colors for orchestration
+        // Status colors
         status: {
           success: "hsl(var(--status-success))",
           warning: "hsl(var(--status-warning))",
@@ -93,6 +95,14 @@ export default {
           1: "hsl(var(--surface-1))",
           2: "hsl(var(--surface-2))",
           3: "hsl(var(--surface-3))",
+          raised: "hsl(var(--surface-raised))",
+        },
+        // Labels (Platinum/Silver)
+        label: {
+          primary: "hsl(var(--label-primary))",
+          secondary: "hsl(var(--label-secondary))",
+          muted: "hsl(var(--label-muted))",
+          engraved: "hsl(var(--label-engraved))",
         },
         // DAG node colors
         node: {
@@ -135,6 +145,14 @@ export default {
           "0%": { transform: "scale(1)", opacity: "1" },
           "100%": { transform: "scale(1.5)", opacity: "0" },
         },
+        "glow-pulse": {
+          "0%, 100%": { 
+            boxShadow: "0 0 4px hsl(var(--primary) / 0.4)",
+          },
+          "50%": { 
+            boxShadow: "0 0 12px hsl(var(--primary) / 0.7), 0 0 24px hsl(var(--primary) / 0.3)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -142,6 +160,7 @@ export default {
         "fade-in": "fade-in 0.2s ease-out",
         "slide-in-right": "slide-in-right 0.3s ease-out",
         "pulse-ring": "pulse-ring 1.5s ease-out infinite",
+        "glow-pulse": "glow-pulse 2s ease-in-out infinite",
       },
     },
   },
