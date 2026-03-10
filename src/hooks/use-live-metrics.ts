@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getPersistenceAdapter } from '@/lib/persistence-adapter';
 
 export interface LiveMetrics {
   totalRuns: number;
@@ -39,21 +40,15 @@ export function useLiveMetrics(pollIntervalMs = 5000) {
 
   const refresh = useCallback(async () => {
     try {
-      const [
-        { count: runCount },
-        { data: runAgg },
-        { count: taskCount },
-        { count: ruleCount },
-        { count: nodeCount },
-        { count: edgeCount },
-        { count: contraCount },
-        { count: atomCount },
-        { count: witnessCount },
-        { data: latestRun },
-        { data: latestCog },
-      ] = await Promise.all([
-        supabase.from('run_traces').select('*', { count: 'exact', head: true }),
-        supabase.from('run_traces').select('total_tokens, tasks_passed, avg_score').order('created_at', { ascending: false }).limit(20),
+      const adapter = getPersistenceAdapter();
+      const runs = await adapter.fetchRunTraces(100);
+      const totalTokens = runs.reduce((s, r) => s + ((r.total_tokens as number) || 0), 0);
+      const totalPassed = runs.reduce((s, r) => s + ((r.tasks_passed as number) || 0), 0);
+      const scores = runs.filter(r => r.avg_score != null).map(r => r.avg_score as number);
+      const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+      const latestRun = runs[0];
+
+      const settled = await Promise.allSettled([
         supabase.from('tasks').select('*', { count: 'exact', head: true }),
         supabase.from('process_rules').select('*', { count: 'exact', head: true }).eq('active', true),
         supabase.from('knowledge_nodes').select('*', { count: 'exact', head: true }),
@@ -61,17 +56,19 @@ export function useLiveMetrics(pollIntervalMs = 5000) {
         supabase.from('contradictions').select('*', { count: 'exact', head: true }),
         supabase.from('atoms').select('*', { count: 'exact', head: true }),
         supabase.from('witness_envelopes').select('*', { count: 'exact', head: true }),
-        supabase.from('run_traces').select('run_id, status').order('created_at', { ascending: false }).limit(1),
         supabase.from('cognitive_snapshots').select('cognitive_load, drift_detected').order('created_at', { ascending: false }).limit(1),
       ]);
-
-      const totalTokens = (runAgg || []).reduce((s, r) => s + (r.total_tokens || 0), 0);
-      const totalPassed = (runAgg || []).reduce((s, r) => s + (r.tasks_passed || 0), 0);
-      const scores = (runAgg || []).filter(r => r.avg_score != null).map(r => r.avg_score as number);
-      const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+      const taskCount = settled[0].status === 'fulfilled' ? settled[0].value.count : 0;
+      const ruleCount = settled[1].status === 'fulfilled' ? settled[1].value.count : 0;
+      const nodeCount = settled[2].status === 'fulfilled' ? settled[2].value.count : 0;
+      const edgeCount = settled[3].status === 'fulfilled' ? settled[3].value.count : 0;
+      const contraCount = settled[4].status === 'fulfilled' ? settled[4].value.count : 0;
+      const atomCount = settled[5].status === 'fulfilled' ? settled[5].value.count : 0;
+      const witnessCount = settled[6].status === 'fulfilled' ? settled[6].value.count : 0;
+      const latestCog = settled[7].status === 'fulfilled' ? settled[7].value.data : null;
 
       setMetrics({
-        totalRuns: runCount ?? 0,
+        totalRuns: runs.length,
         totalTokens,
         totalTasks: taskCount ?? 0,
         tasksPassed: totalPassed,
@@ -82,8 +79,8 @@ export function useLiveMetrics(pollIntervalMs = 5000) {
         contradictions: contraCount ?? 0,
         atoms: atomCount ?? 0,
         witnesses: witnessCount ?? 0,
-        latestRunId: latestRun?.[0]?.run_id ?? null,
-        latestRunStatus: latestRun?.[0]?.status ?? null,
+        latestRunId: (latestRun?.run_id as string) ?? null,
+        latestRunStatus: (latestRun?.status as string) ?? null,
         cognitiveLoad: latestCog?.[0]?.cognitive_load ?? 0,
         driftDetected: latestCog?.[0]?.drift_detected ?? false,
         lastUpdated: Date.now(),

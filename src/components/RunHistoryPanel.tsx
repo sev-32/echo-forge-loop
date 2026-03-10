@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { getPersistenceAdapter } from '@/lib/persistence-adapter';
 import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
 import {
   Brain, ChevronDown, ChevronRight, Clock, Zap, Target, Shield, Sparkles,
@@ -345,19 +345,19 @@ export function RunHistoryPanel() {
 
   const fetchRuns = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('run_traces')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50);
-    if (!error && data) {
+    const data = await getPersistenceAdapter().fetchRunTraces(50);
+    if (data.length) {
       setRuns(data as unknown as RunTrace[]);
-      if (data.length > 0 && !selectedRun) setSelectedRun(data[0] as unknown as RunTrace);
+      if (!selectedRun) setSelectedRun(data[0] as unknown as RunTrace);
+    } else {
+      setRuns([]);
     }
     setLoading(false);
   }, [selectedRun]);
 
-  useEffect(() => { fetchRuns(); }, []);
+  useEffect(() => {
+    fetchRuns();
+  }, []);
   useRealtimeRefresh(fetchRuns, { tables: ['run_traces'], debounceMs: 1000 });
 
   return (

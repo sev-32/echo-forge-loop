@@ -63,7 +63,7 @@ export function RightPanel({ isOpen, onToggle }: RightPanelProps) {
         <MiniStat label="Tasks" value={metrics.totalTasks} />
         <MiniStat label="Rules" value={metrics.activeRules} />
         <MiniStat label="Edges" value={metrics.knowledgeEdges} />
-        <MiniStat label="⚡" value={metrics.witnesses} />
+        <MiniStat label="W" value={metrics.witnesses} />
       </div>
 
       {/* Cognitive Load Indicator */}
@@ -77,9 +77,8 @@ export function RightPanel({ isOpen, onToggle }: RightPanelProps) {
           </div>
           <div className="h-1 w-full rounded-full bg-secondary overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                metrics.cognitiveLoad > 0.7 ? 'bg-status-error' : metrics.cognitiveLoad > 0.4 ? 'bg-status-warning' : 'bg-status-success'
-              }`}
+              className={`h-full rounded-full transition-all duration-500 ${metrics.cognitiveLoad > 0.7 ? 'bg-status-error' : metrics.cognitiveLoad > 0.4 ? 'bg-status-warning' : 'bg-status-success'
+                }`}
               style={{ width: `${Math.min(100, metrics.cognitiveLoad * 100)}%` }}
             />
           </div>

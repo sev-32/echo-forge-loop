@@ -1,7 +1,14 @@
 // ─── Deep Research Client API ────────────────────────
-// Streams research phases from the deep-research edge function
+// Streams research phases from the local backend or Supabase edge function
 
-const RESEARCH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deep-research`;
+// Use local backend if VITE_CHAT_URL is set (e.g. http://localhost:5002/chat → http://localhost:5002/research)
+const LOCAL_BASE = import.meta.env.VITE_CHAT_URL
+  ? import.meta.env.VITE_CHAT_URL.replace(/\/chat$/, '')
+  : null;
+const RESEARCH_URL = LOCAL_BASE
+  ? `${LOCAL_BASE}/research`
+  : `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deep-research`;
+const IS_LOCAL = !!LOCAL_BASE;
 
 export interface ResearchDecomposition {
   main_thesis: string;
@@ -52,12 +59,14 @@ export async function streamDeepResearch(props: {
   onComplete: (meta: ResearchResult['meta']) => void;
   onError: (error: string) => void;
 }) {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (!IS_LOCAL) {
+    headers.Authorization = `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`;
+  }
+
   const resp = await fetch(RESEARCH_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-    },
+    headers,
     body: JSON.stringify({ query: props.query, depth: props.depth || 'standard', run_id: props.run_id }),
   });
 

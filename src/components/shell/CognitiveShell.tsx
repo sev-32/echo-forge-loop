@@ -1,9 +1,13 @@
-import { useState, useEffect, useCallback, ReactNode } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import { TopBar } from "./TopBar";
 import { LeftRail } from "./LeftRail";
-import { RightPanel } from "./RightPanel";
+import { RightDrawerBar } from "./RightDrawerBar";
 import { BottomDock } from "./BottomDock";
 import { CommandPalette } from "./CommandPalette";
+import { LiveFeedDrawer } from "@/components/drawers/LiveFeedDrawer";
+import { ChatDrawer } from "@/components/drawers/ChatDrawer";
+import { RunHistoryDrawer } from "@/components/drawers/RunHistoryDrawer";
+import { VisualInspectorDrawer } from "@/components/drawers/VisualInspectorDrawer";
 
 interface CognitiveShellProps {
   children: ReactNode;
@@ -17,14 +21,14 @@ interface CognitiveShellProps {
 
 const TAB_SHORTCUTS: Record<string, string> = {
   '1': 'chat',
-  '2': 'missions',
-  '3': 'swarm',
-  '4': 'runs',
-  '5': 'memory',
-  '6': 'journal',
-  '7': 'cognition',
-  '8': 'knowledge',
-  '9': 'trust',
+  '2': 'ide',
+  '3': 'research',
+  '4': 'missions',
+  '5': 'swarm',
+  '6': 'runs',
+  '7': 'memory',
+  '8': 'cognition',
+  '9': 'knowledge',
   '0': 'persona',
 };
 
@@ -37,8 +41,6 @@ export function CognitiveShell({
   iteration,
   checkpoint,
 }: CognitiveShellProps) {
-  const [rightPanelOpen, setRightPanelOpen] = useState(true);
-
   // Keyboard shortcuts: 1-9 for nav (only when not typing)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -55,6 +57,9 @@ export function CognitiveShell({
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onTabChange]);
+
+
+
 
   return (
     <div className="h-screen w-full flex flex-col bg-background overflow-hidden">
@@ -74,8 +79,53 @@ export function CognitiveShell({
           {children}
         </main>
 
-        {/* Right Panel - Persistent Intelligence */}
-        <RightPanel isOpen={rightPanelOpen} onToggle={() => setRightPanelOpen(!rightPanelOpen)} />
+        {/* Right Drawer Bar - Multi-drawer system */}
+        <RightDrawerBar renderDrawer={(drawerId) => {
+          switch (drawerId) {
+            case 'live-feed': return <LiveFeedDrawer />;
+            case 'ai-chat': return <ChatDrawer />;
+            case 'memory':
+              return (
+                <div className="h-full flex flex-col">
+                  <div className="panel-header"><span className="text-engraved">MEMORY FABRIC</span></div>
+                  <div className="flex-1 flex items-center justify-center text-label-muted text-xs">
+                    <div className="text-center"><div className="text-2xl mb-2 opacity-30">🧠</div><div>Memory drawer — coming soon</div></div>
+                  </div>
+                </div>
+              );
+            case 'knowledge':
+              return (
+                <div className="h-full flex flex-col">
+                  <div className="panel-header"><span className="text-engraved">EVIDENCE GRAPH</span></div>
+                  <div className="flex-1 flex items-center justify-center text-label-muted text-xs">
+                    <div className="text-center"><div className="text-2xl mb-2 opacity-30">🔗</div><div>Knowledge drawer — coming soon</div></div>
+                  </div>
+                </div>
+              );
+            case 'cognition':
+              return (
+                <div className="h-full flex flex-col">
+                  <div className="panel-header"><span className="text-engraved">COGNITION</span></div>
+                  <div className="flex-1 flex items-center justify-center text-label-muted text-xs">
+                    <div className="text-center"><div className="text-2xl mb-2 opacity-30"></div><div>Cognition drawer — coming soon</div></div>
+                  </div>
+                </div>
+              );
+            case 'run-history': return <RunHistoryDrawer />;
+            case 'visual': return <VisualInspectorDrawer />;
+            case 'terminal':
+              return (
+                <div className="h-full flex flex-col">
+                  <div className="panel-header"><span className="text-engraved">TERMINAL</span></div>
+                  <div className="flex-1 flex items-center justify-center text-label-muted text-xs">
+                    <div className="text-center"><div className="text-2xl mb-2 opacity-30">▶</div><div>Terminal drawer — coming soon</div></div>
+                  </div>
+                </div>
+              );
+            default: return null;
+          }
+        }} />
+
       </div>
 
       {/* Bottom Dock - Process/History */}

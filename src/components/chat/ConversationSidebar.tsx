@@ -13,7 +13,7 @@ interface ConversationSidebarProps {
 
 export function ConversationSidebar({ conversations, activeId, onSelect, onNew, onDelete }: ConversationSidebarProps) {
   const [search, setSearch] = useState('');
-  const filtered = conversations.filter(c => 
+  const filtered = conversations.filter(c =>
     c.title.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -55,22 +55,23 @@ export function ConversationSidebar({ conversations, activeId, onSelect, onNew, 
               <button
                 key={conv.id}
                 onClick={() => onSelect(conv.id)}
-                className={`w-full text-left px-2.5 py-2 rounded group transition-all ${
-                  activeId === conv.id ? 'surface-raised amber-glow' : 'hover:surface-well'
-                }`}
+                className={`w-full text-left px-2.5 py-2 rounded group transition-all ${activeId === conv.id ? 'surface-raised amber-glow' : 'hover:surface-well'
+                  }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-medium truncate flex-1 ${
-                    activeId === conv.id ? 'text-label-primary' : 'text-label-secondary'
-                  }`}>
+                  <span className={`text-[10px] font-medium truncate flex-1 ${activeId === conv.id ? 'text-label-primary' : 'text-label-secondary'
+                    }`}>
                     {conv.title}
                   </span>
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={(e) => { e.stopPropagation(); onDelete(conv.id); }}
-                    className="opacity-0 group-hover:opacity-100 rail-icon w-4 h-4 flex-shrink-0"
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onDelete(conv.id); } }}
+                    className="opacity-0 group-hover:opacity-100 rail-icon w-4 h-4 flex-shrink-0 cursor-pointer"
                   >
                     <IconTrash size={10} />
-                  </button>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-[8px] font-mono text-label-engraved">

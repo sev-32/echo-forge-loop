@@ -1,6 +1,11 @@
 import type { ReflectionData, MemoryDetail } from './types';
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aim-chat`;
+// Use local backend when VITE_CHAT_URL is set; otherwise Supabase Edge Function (backward compatible).
+const CHAT_URL =
+  import.meta.env.VITE_CHAT_URL ||
+  (import.meta.env.VITE_SUPABASE_URL
+    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aim-chat`
+    : '');
 
 export async function streamAIMOS({
   conversationHistory, onPlan, onTaskStart, onTaskDelta, onTaskVerifyStart, onTaskVerified,
@@ -37,12 +42,18 @@ export async function streamAIMOS({
   onSynthesisStart: () => void;
   onSynthesisComplete: (data: any) => void;
 }) {
+  if (!CHAT_URL) {
+    onError('No chat backend configured. Set VITE_CHAT_URL or VITE_SUPABASE_URL.');
+    return;
+  }
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  if (key) headers.Authorization = `Bearer ${key}`;
+
   const resp = await fetch(CHAT_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-    },
+    headers,
     body: JSON.stringify({ messages: conversationHistory }),
   });
 

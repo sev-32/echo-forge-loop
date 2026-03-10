@@ -146,6 +146,28 @@ export function IconSettings({ size = 24, ...props }: IconProps) {
   );
 }
 
+export function IconVision({ size = 24, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" {...props}>
+      {/* Vision / eye lens */}
+      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function IconShield({ size = 24, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" {...props}>
+      {/* Shield body */}
+      <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7L12 2z" />
+      {/* Check mark */}
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // STATUS ICONS
 // ═══════════════════════════════════════════════════════════════════════════

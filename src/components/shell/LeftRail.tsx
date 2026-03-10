@@ -1,4 +1,4 @@
-import { 
+import {
   IconIntelligence,
   IconMission,
   IconSwarm,
@@ -14,6 +14,7 @@ import {
   IconSettings,
   IconHexagon,
   IconSearch,
+  IconCode,
 } from "@/components/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ComponentType, SVGProps } from "react";
@@ -30,7 +31,9 @@ interface RailItem {
 
 const railItems: RailItem[] = [
   { id: 'chat', icon: IconIntelligence, label: 'Intelligence', shortcut: '1', section: 'primary' },
-  { id: 'research', icon: IconSearch, label: 'Deep Research', shortcut: '2', section: 'primary' },
+  { id: 'ide', icon: IconCode, label: 'IDE', shortcut: '2', section: 'primary' },
+  { id: 'research', icon: IconSearch, label: 'Deep Research', shortcut: '3', section: 'primary' },
+
   { id: 'missions', icon: IconMission, label: 'Missions', shortcut: '3', section: 'primary' },
   { id: 'swarm', icon: IconSwarm, label: 'Swarm', shortcut: '4', section: 'primary' },
   { id: 'runs', icon: IconHistory, label: 'Run History', shortcut: '4', section: 'secondary' },

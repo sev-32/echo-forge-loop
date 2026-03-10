@@ -22,6 +22,7 @@ import { streamAIMOS } from '@/components/chat/stream';
 import { mdComponents } from '@/components/chat/md-components';
 import { ConversationSidebar } from '@/components/chat/ConversationSidebar';
 import { useConversations } from '@/hooks/use-conversations';
+import { getPersistenceAdapter } from '@/lib/persistence-adapter';
 import { MissionControl, MissionControlArchive, ComplexityBadge, PhasePipeline, ThoughtStream, ContextSidebar } from '@/components/chat/RunDashboard';
 import { TaskCard } from '@/components/chat/TaskExplorer';
 import { DeepReflectionPanel } from '@/components/chat/ReflectionViewer';
@@ -37,7 +38,8 @@ export function AIMChat() {
   const [isRunning, setIsRunning] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
-  
+  const runDataRef = useRef<RunData | null>(null);
+
   const {
     conversations, activeConversationId,
     loadConversation, createConversation, updateConversation,
@@ -97,7 +99,14 @@ export function AIMChat() {
     const conversationHistory = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
 
     const updateRun = (updater: (rd: RunData) => RunData) => {
-      setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, runData: updater(m.runData!) } : m));
+      setMessages(prev =>
+        prev.map(m => {
+          if (m.id !== assistantId || !m.runData) return m;
+          const next = updater(m.runData);
+          runDataRef.current = next;
+          return { ...m, runData: next };
+        })
+      );
     };
 
     const addThought = (phase: ThoughtEntry['phase'], content: string) => {
@@ -161,7 +170,47 @@ export function AIMChat() {
         onSynthesisStart: () => { updateRun(rd => ({ ...rd, status: 'synthesizing' as any, activePhase: 'synthesize' })); emitSystemEvent('task_done', '✨ Synthesizing final response...'); },
         onSynthesisComplete: (data) => { updateRun(rd => ({ ...rd, synthesizedResponse: data.response, synthesisFollowUps: data.follow_up_suggestions || [], synthesisCaveats: data.caveats || [] })); emitSystemEvent('task_done', `Synthesis complete (conf: ${((data.confidence || 0) * 100).toFixed(0)}%)`); },
         onRunComplete: (data) => {
-          updateRun(rd => ({ ...rd, status: 'complete', totalTokens: data.total_tokens, activePhase: 'complete' }));
+          updateRun(rd => {
+            const next = { ...rd, status: 'complete', totalTokens: data.total_tokens, activePhase: 'complete' };
+            runDataRef.current = next;
+            const tasksPassed = next.tasks.filter(t => t.status === 'done').length;
+            const scores = next.tasks.map(t => t.verification?.score).filter((s): s is number => s != null);
+            const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+            const payload = {
+              run_id: next.runId || data.run_id || `run-${Date.now()}`,
+              goal: next.goal,
+              approach: next.approach,
+              overall_complexity: next.overallComplexity,
+              planning_reasoning: next.planningReasoning,
+              open_questions: next.openQuestions ?? [],
+              memory_loaded: next.memoryLoaded ?? { reflections: 0, rules: 0, knowledge: 0 },
+              status: 'complete',
+              total_tokens: data.total_tokens ?? next.totalTokens,
+              task_count: data.task_count ?? next.tasks.length,
+              tasks_passed: data.tasks_passed ?? tasksPassed,
+              avg_score: avgScore,
+              planning_score: next.reflection?.process_evaluation?.planning_score ?? null,
+              strategy_score: next.reflection?.strategy_assessment?.effectiveness_score ?? null,
+              tasks_detail: next.tasks.map(t => ({
+                title: t.title,
+                detail_level: t.detailLevel,
+                priority: t.priority,
+                reasoning: t.reasoning,
+                acceptance_criteria: t.acceptanceCriteria ?? [],
+                output_length: t.output?.length ?? 0,
+                output_excerpt: (t.output ?? '').slice(0, 300),
+                verification: t.verification ?? null,
+                retried: t.retried ?? false,
+              })),
+              reflection: next.reflection ? { content: next.reflection.summary, metadata: next.reflection as unknown as Record<string, unknown> } : null,
+              generated_rules: next.generatedRules ?? [],
+              knowledge_update: next.knowledgeUpdate ?? null,
+              completed_at: new Date().toISOString(),
+              thoughts: next.thoughts,
+            };
+            getPersistenceAdapter().persistRunTrace(payload).catch(() => {});
+            return next;
+          });
           setIsRunning(false);
           emitSystemEvent('complete', `Run complete: ${data.task_count} tasks, ${data.total_tokens?.toLocaleString()} tokens`);
           setMessages(prev => {
