@@ -271,7 +271,7 @@ export class AgentSystem {
       // Strategy 2: If too many failures, create a diagnostic task
       if (failedTasks.length > 2) {
         const events = await persistence.fetchRecentEvents(1);
-        const runId = events[0]?.run_id || 'stagnation-recovery';
+        const runId = (events[0]?.run_id as string) || 'stagnation-recovery';
         const failureSummary = failedTasks.slice(0, 5).map(t => `${t.title}: ${t.error || 'unknown'}`).join('\n');
         await persistence.persistTask({
           run_id: runId,
