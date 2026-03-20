@@ -735,7 +735,7 @@ Apply any active process rules from memory.`
               send({ type: 'thinking', phase: 'retry', content: `Score ${verification.result.score}/100 below threshold. Retrying with adaptation.` });
               send({ type: 'task_retry_start', task_index: i, reason: verification.result.summary });
 
-              const diagnosis = await diagnoseFailure(LOVABLE_API_KEY, task, taskOutput.output, verification.result);
+              const diagnosis = await diagnoseFailure(LOVABLE_API_KEY!, task, taskOutput.output, verification.result);
               totalTokens += diagnosis.tokens;
               send({ type: 'task_retry_diagnosis', task_index: i, diagnosis: diagnosis.result });
 
