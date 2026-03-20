@@ -240,7 +240,7 @@ export class AIOrchestrationKernel {
         const nodeMap: Record<string, string> = {};
         for (const n of reflection.knowledge_updates.new_nodes) {
           const saved = await persistence.persistKnowledgeNode({ label: n.label, node_type: n.node_type });
-          if (saved) nodeMap[n.label] = saved.id;
+          if (saved) nodeMap[n.label] = saved.id as string;
         }
         for (const e of reflection.knowledge_updates.new_edges || []) {
           const sourceId = nodeMap[e.source_label];
