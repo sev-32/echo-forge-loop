@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { CognitiveShell } from '@/components/shell/CognitiveShell';
 import { PanelErrorBoundary } from '@/components/shell/ErrorBoundary';
 import { AIMChat } from '@/components/AIMChat';
+import { DocumentBuilder } from '@/components/docs/DocumentBuilder';
 import { DeepResearchPanel } from '@/components/DeepResearchPanel';
 import { RunHistoryPanel } from '@/components/RunHistoryPanel';
 import { MemoryPanel } from '@/components/MemoryPanel';
