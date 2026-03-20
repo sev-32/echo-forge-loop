@@ -747,7 +747,7 @@ Apply any active process rules from memory.`
               if (retryAtomId) allAtomIds.push(retryAtomId);
 
               send({ type: 'task_verify_start', task_index: i });
-              verification = await verifyTask(LOVABLE_API_KEY, task, taskOutput.output);
+              verification = await verifyTask(LOVABLE_API_KEY!, task, taskOutput.output);
               totalTokens += verification.tokens;
               send({ type: 'task_verified', task_index: i, verification: verification.result });
             }
