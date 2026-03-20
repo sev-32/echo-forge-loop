@@ -222,7 +222,7 @@ export class AgentSystem {
     for (const task of topTasks) {
       // Find the latest run_id from recent events
       const events = await persistence.fetchRecentEvents(1);
-      const runId = events[0]?.run_id || 'agent-improvements';
+      const runId = (events[0]?.run_id as string) || 'agent-improvements';
       await persistence.persistTask({ run_id: runId, title: `[Auto] ${task.title}`, prompt: task.prompt, priority: task.priority, status: 'queued' });
       this.emitFeedback(agent.id, 'improvement', 'info', `Task Created: ${task.title}`, `Automatically queued improvement task with priority ${task.priority}`);
     }
