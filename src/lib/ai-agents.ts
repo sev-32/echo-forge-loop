@@ -260,10 +260,10 @@ export class AgentSystem {
         { velocity, completionDelta, queuedTasks: queuedTasks.length, failedTasks: failedTasks.length }, true);
 
       // Strategy 1: Re-prioritize stuck tasks - boost queued tasks with low priority
-      const lowPrioQueued = queuedTasks.filter(t => t.priority < 50).slice(0, 3);
+      const lowPrioQueued = queuedTasks.filter(t => (t.priority as number) < 50).slice(0, 3);
       for (const t of lowPrioQueued) {
-        const newPriority = Math.min(t.priority + 30, 95);
-        await persistence.updateTask(t.id, { priority: newPriority });
+        const newPriority = Math.min((t.priority as number) + 30, 95);
+        await persistence.updateTask(t.id as string, { priority: newPriority });
         this.emitFeedback(agent.id, 'improvement', 'medium', `Priority Boost: ${t.title}`,
           `Boosted priority ${t.priority} → ${newPriority} to break stagnation`);
       }
