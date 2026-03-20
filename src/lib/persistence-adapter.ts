@@ -495,14 +495,14 @@ class SupabaseAdapter implements PersistenceAdapter {
 
   async persistRunTrace(run: Record<string, unknown>) {
     const row = {
-      run_id: run.run_id,
-      goal: run.goal ?? '',
-      approach: run.approach ?? '',
-      overall_complexity: run.overall_complexity ?? 'moderate',
-      planning_reasoning: run.planning_reasoning ?? '',
+      run_id: run.run_id as string,
+      goal: (run.goal as string) ?? '',
+      approach: (run.approach as string) ?? '',
+      overall_complexity: (run.overall_complexity as string) ?? 'moderate',
+      planning_reasoning: (run.planning_reasoning as string) ?? '',
       open_questions: (run.open_questions as string[]) ?? [],
       memory_loaded: (run.memory_loaded as Json) ?? {},
-      status: run.status ?? 'complete',
+      status: (run.status as string) ?? 'complete',
       total_tokens: (run.total_tokens as number) ?? 0,
       task_count: (run.task_count as number) ?? 0,
       tasks_passed: (run.tasks_passed as number) ?? 0,

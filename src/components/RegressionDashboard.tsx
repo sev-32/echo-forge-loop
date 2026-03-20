@@ -69,9 +69,9 @@ export function RegressionDashboard() {
     setLoading(true);
     try {
       const data = await persistence.fetchTestRuns({ limit: 200 });
-      setRuns(data as TestRunData[]);
+      setRuns(data as unknown as TestRunData[]);
 
-      const points: TrendPoint[] = (data as TestRunData[])
+      const points: TrendPoint[] = (data as unknown as TestRunData[])
         .filter(r => r.score !== null)
         .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
         .map(r => ({

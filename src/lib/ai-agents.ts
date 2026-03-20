@@ -288,10 +288,10 @@ export class AgentSystem {
       const blockedTasks = tasks.filter(t => t.status === 'blocked');
       for (const bt of blockedTasks.slice(0, 2)) {
         // Check if dependencies are actually done
-        const deps = bt.dependencies || [];
-        const allDepsDone = deps.every(depId => tasks.find(t => t.id === depId)?.status === 'done');
+        const deps = (bt.dependencies as string[]) || [];
+        const allDepsDone = deps.every((depId: string) => tasks.find(t => t.id === depId)?.status === 'done');
         if (allDepsDone || deps.length === 0) {
-          await persistence.updateTask(bt.id, { status: 'queued' });
+          await persistence.updateTask(bt.id as string, { status: 'queued' });
           this.emitFeedback(agent.id, 'improvement', 'medium', `Unblocked: ${bt.title}`,
             `Task was blocked but dependencies are resolved. Re-queued.`);
         }

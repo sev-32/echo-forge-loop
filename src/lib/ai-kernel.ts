@@ -266,7 +266,7 @@ export class AIOrchestrationKernel {
             bank = await persistence.persistContextBank({ name: cbu.bank_name, description: `Auto-created by AI journal` });
           }
           if (bank) {
-            await persistence.persistContextBankEntry({ bank_id: bank.id, content: cbu.content, source: 'ai-journal', priority: cbu.priority || 50 });
+            await persistence.persistContextBankEntry({ bank_id: bank.id as string, content: cbu.content, source: 'ai-journal', priority: cbu.priority || 50 });
           }
         }
       }
