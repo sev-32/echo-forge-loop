@@ -636,7 +636,7 @@ Apply any active process rules from memory.`
             let taskOutput: { output: string; tokens: number };
             if (isSimple) {
               // Fast path: single-pass, no section planning, no continuation
-              taskOutput = await streamContent(LOVABLE_API_KEY, model,
+              taskOutput = await streamContent(LOVABLE_API_KEY!, model,
                 `You are AIM-OS. Answer concisely and accurately.\nGOAL: "${plan.goal_summary}"\n${detailInstructions.concise}\n${prevContext ? `\n--- CONTEXT ---\n${prevContext}` : ''}`,
                 `## Task: ${task.title}\n\n${task.prompt}\n\n### Criteria\n${task.acceptance_criteria.map((c: string, j: number) => `${j+1}. ${c}`).join('\n')}`,
                 send, i);
