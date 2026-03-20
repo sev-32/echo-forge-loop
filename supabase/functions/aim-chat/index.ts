@@ -636,12 +636,12 @@ Apply any active process rules from memory.`
             let taskOutput: { output: string; tokens: number };
             if (isSimple) {
               // Fast path: single-pass, no section planning, no continuation
-              taskOutput = await streamContent(LOVABLE_API_KEY, model,
+              taskOutput = await streamContent(LOVABLE_API_KEY!, model,
                 `You are AIM-OS. Answer concisely and accurately.\nGOAL: "${plan.goal_summary}"\n${detailInstructions.concise}\n${prevContext ? `\n--- CONTEXT ---\n${prevContext}` : ''}`,
                 `## Task: ${task.title}\n\n${task.prompt}\n\n### Criteria\n${task.acceptance_criteria.map((c: string, j: number) => `${j+1}. ${c}`).join('\n')}`,
                 send, i);
             } else {
-              taskOutput = await executeTask(LOVABLE_API_KEY, plan, task, i, detailLevel, prevContext, send, null);
+              taskOutput = await executeTask(LOVABLE_API_KEY!, plan, task, i, detailLevel, prevContext, send, null);
             }
             const execLatencyMs = Date.now() - execStartMs;
             totalTokens += taskOutput.tokens;
@@ -691,7 +691,7 @@ Apply any active process rules from memory.`
             send({ type: 'thinking', phase: 'verify', content: `Verifying task ${i+1} against ${task.acceptance_criteria.length} criteria...` });
             send({ type: 'task_verify_start', task_index: i });
             const verifyStartMs = Date.now();
-            let verification = await verifyTask(LOVABLE_API_KEY, task, taskOutput.output);
+            let verification = await verifyTask(LOVABLE_API_KEY!, task, taskOutput.output);
             totalTokens += verification.tokens;
 
             // ─── VIF: Witness verification ───
@@ -735,11 +735,11 @@ Apply any active process rules from memory.`
               send({ type: 'thinking', phase: 'retry', content: `Score ${verification.result.score}/100 below threshold. Retrying with adaptation.` });
               send({ type: 'task_retry_start', task_index: i, reason: verification.result.summary });
 
-              const diagnosis = await diagnoseFailure(LOVABLE_API_KEY, task, taskOutput.output, verification.result);
+              const diagnosis = await diagnoseFailure(LOVABLE_API_KEY!, task, taskOutput.output, verification.result);
               totalTokens += diagnosis.tokens;
               send({ type: 'task_retry_diagnosis', task_index: i, diagnosis: diagnosis.result });
 
-              taskOutput = await executeTask(LOVABLE_API_KEY, plan, task, i, detailLevel, prevContext, send, diagnosis.result);
+              taskOutput = await executeTask(LOVABLE_API_KEY!, plan, task, i, detailLevel, prevContext, send, diagnosis.result);
               totalTokens += taskOutput.tokens;
 
               // Re-store atom + re-verify
@@ -747,7 +747,7 @@ Apply any active process rules from memory.`
               if (retryAtomId) allAtomIds.push(retryAtomId);
 
               send({ type: 'task_verify_start', task_index: i });
-              verification = await verifyTask(LOVABLE_API_KEY, task, taskOutput.output);
+              verification = await verifyTask(LOVABLE_API_KEY!, task, taskOutput.output);
               totalTokens += verification.tokens;
               send({ type: 'task_verified', task_index: i, verification: verification.result });
             }
@@ -1748,7 +1748,7 @@ async function executeTask(apiKey: string, plan: any, task: any, index: number, 
         const section = sectionPlan.sections[si];
         send({ type: 'task_section_start', task_index: index, section_index: si, section_title: section.title });
         const result = await streamContent(apiKey, model,
-          `You are AIM-OS Task Executor.\nGOAL: "${plan.goal_summary}"\nTask: "${task.title}" — Section ${si+1}/${sectionPlan.sections.length}\n${detailInstructions[detailLevel]}\nSECTION: ${section.guidance}\nTARGET: ~${section.word_target} words\n${fullOutput.length > 0 ? `\n--- DOCUMENT SO FAR ---\n${fullOutput.slice(-4000)}` : ''}${prevContext ? `\n--- CONTEXT ---\n${prevContext}` : ''}${retryContext}\nStart with ## ${section.title}`,
+          `You are AIM-OS Task Executor.\nGOAL: "${plan.goal_summary}"\nTask: "${task.title}" — Section ${si+1}/${sectionPlan.sections.length}\n${detailInstructions[detailLevel]}\nSECTION: ${section.guidance}\nTARGET: ~${section.wordTarget} words\n${fullOutput.length > 0 ? `\n--- DOCUMENT SO FAR ---\n${fullOutput.slice(-4000)}` : ''}${prevContext ? `\n--- CONTEXT ---\n${prevContext}` : ''}${retryContext}\nStart with ## ${section.title}`,
           `Write "${section.title}".\n\nGuidance: ${section.guidance}\nCriteria:\n${task.acceptance_criteria.map((c: string, j: number) => `${j+1}. ${c}`).join('\n')}`,
           send, index);
         totalTokens += result.tokens;

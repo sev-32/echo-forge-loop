@@ -240,7 +240,7 @@ export class AIOrchestrationKernel {
         const nodeMap: Record<string, string> = {};
         for (const n of reflection.knowledge_updates.new_nodes) {
           const saved = await persistence.persistKnowledgeNode({ label: n.label, node_type: n.node_type });
-          if (saved) nodeMap[n.label] = saved.id;
+          if (saved) nodeMap[n.label] = saved.id as string;
         }
         for (const e of reflection.knowledge_updates.new_edges || []) {
           const sourceId = nodeMap[e.source_label];
@@ -266,7 +266,7 @@ export class AIOrchestrationKernel {
             bank = await persistence.persistContextBank({ name: cbu.bank_name, description: `Auto-created by AI journal` });
           }
           if (bank) {
-            await persistence.persistContextBankEntry({ bank_id: bank.id, content: cbu.content, source: 'ai-journal', priority: cbu.priority || 50 });
+            await persistence.persistContextBankEntry({ bank_id: bank.id as string, content: cbu.content, source: 'ai-journal', priority: cbu.priority || 50 });
           }
         }
       }

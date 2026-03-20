@@ -222,7 +222,7 @@ export class AgentSystem {
     for (const task of topTasks) {
       // Find the latest run_id from recent events
       const events = await persistence.fetchRecentEvents(1);
-      const runId = events[0]?.run_id || 'agent-improvements';
+      const runId = (events[0]?.run_id as string) || 'agent-improvements';
       await persistence.persistTask({ run_id: runId, title: `[Auto] ${task.title}`, prompt: task.prompt, priority: task.priority, status: 'queued' });
       this.emitFeedback(agent.id, 'improvement', 'info', `Task Created: ${task.title}`, `Automatically queued improvement task with priority ${task.priority}`);
     }
@@ -260,10 +260,10 @@ export class AgentSystem {
         { velocity, completionDelta, queuedTasks: queuedTasks.length, failedTasks: failedTasks.length }, true);
 
       // Strategy 1: Re-prioritize stuck tasks - boost queued tasks with low priority
-      const lowPrioQueued = queuedTasks.filter(t => t.priority < 50).slice(0, 3);
+      const lowPrioQueued = queuedTasks.filter(t => (t.priority as number) < 50).slice(0, 3);
       for (const t of lowPrioQueued) {
-        const newPriority = Math.min(t.priority + 30, 95);
-        await persistence.updateTask(t.id, { priority: newPriority });
+        const newPriority = Math.min((t.priority as number) + 30, 95);
+        await persistence.updateTask(t.id as string, { priority: newPriority });
         this.emitFeedback(agent.id, 'improvement', 'medium', `Priority Boost: ${t.title}`,
           `Boosted priority ${t.priority} → ${newPriority} to break stagnation`);
       }
@@ -271,7 +271,7 @@ export class AgentSystem {
       // Strategy 2: If too many failures, create a diagnostic task
       if (failedTasks.length > 2) {
         const events = await persistence.fetchRecentEvents(1);
-        const runId = events[0]?.run_id || 'stagnation-recovery';
+        const runId = (events[0]?.run_id as string) || 'stagnation-recovery';
         const failureSummary = failedTasks.slice(0, 5).map(t => `${t.title}: ${t.error || 'unknown'}`).join('\n');
         await persistence.persistTask({
           run_id: runId,
@@ -288,10 +288,10 @@ export class AgentSystem {
       const blockedTasks = tasks.filter(t => t.status === 'blocked');
       for (const bt of blockedTasks.slice(0, 2)) {
         // Check if dependencies are actually done
-        const deps = bt.dependencies || [];
-        const allDepsDone = deps.every(depId => tasks.find(t => t.id === depId)?.status === 'done');
+        const deps = (bt.dependencies as string[]) || [];
+        const allDepsDone = deps.every((depId: string) => tasks.find(t => t.id === depId)?.status === 'done');
         if (allDepsDone || deps.length === 0) {
-          await persistence.updateTask(bt.id, { status: 'queued' });
+          await persistence.updateTask(bt.id as string, { status: 'queued' });
           this.emitFeedback(agent.id, 'improvement', 'medium', `Unblocked: ${bt.title}`,
             `Task was blocked but dependencies are resolved. Re-queued.`);
         }

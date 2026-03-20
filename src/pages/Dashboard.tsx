@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { CognitiveShell } from '@/components/shell/CognitiveShell';
 import { PanelErrorBoundary } from '@/components/shell/ErrorBoundary';
 import { AIMChat } from '@/components/AIMChat';
+import { DocumentBuilder } from '@/components/docs/DocumentBuilder';
 import { DeepResearchPanel } from '@/components/DeepResearchPanel';
 import { RunHistoryPanel } from '@/components/RunHistoryPanel';
 import { MemoryPanel } from '@/components/MemoryPanel';
@@ -50,6 +51,11 @@ export default function Dashboard() {
       systemStatus="idle"
     >
       <div className="h-full overflow-auto">
+        {/* ═══ Documents ═══ */}
+        <PanelErrorBoundary fallbackTitle="Documents">
+          {activeTab === 'docs' && <DocumentBuilder />}
+        </PanelErrorBoundary>
+
         {/* ═══ AI Chat ═══ */}
         <PanelErrorBoundary fallbackTitle="Chat">
           {activeTab === 'chat' && <AIMChat />}

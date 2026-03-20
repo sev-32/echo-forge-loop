@@ -403,7 +403,7 @@ IMPORTANT: Keep the same information, just change the delivery style to match th
 
   } catch (error) {
     console.error('[Polycaste] Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
