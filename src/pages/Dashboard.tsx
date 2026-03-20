@@ -51,6 +51,11 @@ export default function Dashboard() {
       systemStatus="idle"
     >
       <div className="h-full overflow-auto">
+        {/* ═══ Documents ═══ */}
+        <PanelErrorBoundary fallbackTitle="Documents">
+          {activeTab === 'docs' && <DocumentBuilder />}
+        </PanelErrorBoundary>
+
         {/* ═══ AI Chat ═══ */}
         <PanelErrorBoundary fallbackTitle="Chat">
           {activeTab === 'chat' && <AIMChat />}
