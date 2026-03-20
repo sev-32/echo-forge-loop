@@ -171,7 +171,7 @@ export function AIMChat() {
         onSynthesisComplete: (data) => { updateRun(rd => ({ ...rd, synthesizedResponse: data.response, synthesisFollowUps: data.follow_up_suggestions || [], synthesisCaveats: data.caveats || [] })); emitSystemEvent('task_done', `Synthesis complete (conf: ${((data.confidence || 0) * 100).toFixed(0)}%)`); },
         onRunComplete: (data) => {
           updateRun(rd => {
-            const next = { ...rd, status: 'complete', totalTokens: data.total_tokens, activePhase: 'complete' };
+            const next = { ...rd, status: 'complete' as const, totalTokens: data.total_tokens, activePhase: 'complete' as const };
             runDataRef.current = next;
             const tasksPassed = next.tasks.filter(t => t.status === 'done').length;
             const scores = next.tasks.map(t => t.verification?.score).filter((s): s is number => s != null);
