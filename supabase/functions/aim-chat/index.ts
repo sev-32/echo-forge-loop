@@ -691,7 +691,7 @@ Apply any active process rules from memory.`
             send({ type: 'thinking', phase: 'verify', content: `Verifying task ${i+1} against ${task.acceptance_criteria.length} criteria...` });
             send({ type: 'task_verify_start', task_index: i });
             const verifyStartMs = Date.now();
-            let verification = await verifyTask(LOVABLE_API_KEY, task, taskOutput.output);
+            let verification = await verifyTask(LOVABLE_API_KEY!, task, taskOutput.output);
             totalTokens += verification.tokens;
 
             // ─── VIF: Witness verification ───
