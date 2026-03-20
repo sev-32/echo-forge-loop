@@ -641,7 +641,7 @@ Apply any active process rules from memory.`
                 `## Task: ${task.title}\n\n${task.prompt}\n\n### Criteria\n${task.acceptance_criteria.map((c: string, j: number) => `${j+1}. ${c}`).join('\n')}`,
                 send, i);
             } else {
-              taskOutput = await executeTask(LOVABLE_API_KEY, plan, task, i, detailLevel, prevContext, send, null);
+              taskOutput = await executeTask(LOVABLE_API_KEY!, plan, task, i, detailLevel, prevContext, send, null);
             }
             const execLatencyMs = Date.now() - execStartMs;
             totalTokens += taskOutput.tokens;
