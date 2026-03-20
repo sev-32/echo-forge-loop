@@ -739,7 +739,7 @@ Apply any active process rules from memory.`
               totalTokens += diagnosis.tokens;
               send({ type: 'task_retry_diagnosis', task_index: i, diagnosis: diagnosis.result });
 
-              taskOutput = await executeTask(LOVABLE_API_KEY, plan, task, i, detailLevel, prevContext, send, diagnosis.result);
+              taskOutput = await executeTask(LOVABLE_API_KEY!, plan, task, i, detailLevel, prevContext, send, diagnosis.result);
               totalTokens += taskOutput.tokens;
 
               // Re-store atom + re-verify
