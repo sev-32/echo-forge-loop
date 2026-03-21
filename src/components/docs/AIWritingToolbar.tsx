@@ -39,7 +39,7 @@ export function AIWritingToolbar({ selectedText, onAction, currentStyle, onStyle
           </button>
 
           {showStyles && (
-            <div className="absolute top-full left-0 mt-1 z-50 surface-float border border-border rounded-lg shadow-xl p-1 min-w-[160px]">
+            <div className="absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-xl p-1 min-w-[160px]">
               {STYLES.map(s => (
                 <button
                   key={s.value}
