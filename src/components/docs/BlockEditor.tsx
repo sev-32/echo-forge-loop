@@ -14,10 +14,22 @@ interface BlockEditorProps {
 export function BlockEditor({ block, onUpdate, onAddAfter, onRemove, onMove, onFocus, isFocused }: BlockEditorProps) {
   const ref = useRef<HTMLDivElement>(null);
 
+  // Sync content from props when it changes externally (e.g. AI generation)
+  const lastExternalContent = useRef(block.content);
+  
+  useEffect(() => {
+    if (ref.current && block.content !== lastExternalContent.current) {
+      // Content changed externally (AI action), update the DOM
+      if (ref.current.innerText !== block.content) {
+        ref.current.innerText = block.content;
+      }
+      lastExternalContent.current = block.content;
+    }
+  }, [block.content]);
+
   useEffect(() => {
     if (isFocused && ref.current) {
       ref.current.focus();
-      // Place cursor at end
       const sel = window.getSelection();
       if (sel && ref.current.childNodes.length > 0) {
         const range = document.createRange();
