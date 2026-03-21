@@ -43,7 +43,9 @@ export function BlockEditor({ block, onUpdate, onAddAfter, onRemove, onMove, onF
 
   const handleInput = useCallback(() => {
     if (ref.current) {
-      onUpdate(block.id, { content: ref.current.innerText });
+      const text = ref.current.innerText;
+      lastExternalContent.current = text;
+      onUpdate(block.id, { content: text });
     }
   }, [block.id, onUpdate]);
 
