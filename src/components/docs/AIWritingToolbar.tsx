@@ -39,7 +39,7 @@ export function AIWritingToolbar({ selectedText, onAction, currentStyle, onStyle
           </button>
 
           {showStyles && (
-            <div className="absolute top-full left-0 mt-1 z-50 surface-float border border-border rounded-lg shadow-xl p-1 min-w-[160px]">
+            <div className="absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-xl p-1 min-w-[160px]">
               {STYLES.map(s => (
                 <button
                   key={s.value}
@@ -68,7 +68,7 @@ export function AIWritingToolbar({ selectedText, onAction, currentStyle, onStyle
             className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] transition-all
               ${isProcessing
                 ? 'opacity-40 cursor-not-allowed'
-                : 'text-label-muted hover:text-primary hover:bg-primary/8 active:scale-[0.97]'
+                : 'text-label-muted hover:text-primary hover:bg-primary/10 active:scale-[0.97]'
               }`}
           >
             <span className="text-xs">{action.icon}</span>
