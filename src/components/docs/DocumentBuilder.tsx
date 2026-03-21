@@ -70,26 +70,46 @@ export function DocumentBuilder() {
 
       if (data?.content) {
         if (actionType === 'outline') {
-          // Parse outline into heading blocks
+          // Parse outline into heading blocks — chain each after the previous
           const lines = data.content.split('\n').filter((l: string) => l.trim());
-          for (const line of lines) {
-            const lastBlock = blocks[blocks.length - 1];
-            if (lastBlock) {
-              const newId = addBlock(lastBlock.id, 'heading');
+          let lastId = blocks[blocks.length - 1]?.id;
+          if (lastId) {
+            for (const line of lines) {
+              const newId = addBlock(lastId, 'heading');
               updateBlock(newId, { content: line.replace(/^#+\s*/, '').trim(), metadata: { level: 2 } });
+              lastId = newId;
             }
           }
-          toast.success('Outline generated');
+          toast.success(`Outline generated — ${lines.length} sections`);
         } else if (actionType === 'generate_section') {
-          const lastBlock = blocks[blocks.length - 1];
-          if (lastBlock) {
-            const newId = addBlock(lastBlock.id, 'paragraph');
+          const lastId = blocks[blocks.length - 1]?.id;
+          if (lastId) {
+            const newId = addBlock(lastId, 'paragraph');
             updateBlock(newId, { content: data.content });
+            setFocusedBlockId(newId);
           }
           toast.success('Section generated');
+        } else if (actionType === 'critique') {
+          // Show critique as a callout block
+          const lastId = blocks[blocks.length - 1]?.id;
+          if (lastId) {
+            const newId = addBlock(lastId, 'callout');
+            updateBlock(newId, { content: data.content });
+            setFocusedBlockId(newId);
+          }
+          toast.success('Critique added');
         } else if (focusedBlockId) {
           updateBlock(focusedBlockId, { content: data.content });
           toast.success(`Block ${actionType}d`);
+        } else {
+          // No block focused — append as new paragraph
+          const lastId = blocks[blocks.length - 1]?.id;
+          if (lastId) {
+            const newId = addBlock(lastId, 'paragraph');
+            updateBlock(newId, { content: data.content });
+            setFocusedBlockId(newId);
+          }
+          toast.success('Content generated');
         }
       }
     } catch (err) {
