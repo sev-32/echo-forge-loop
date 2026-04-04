@@ -548,6 +548,465 @@ export type Database = {
         }
         Relationships: []
       }
+      ion_artifacts: {
+        Row: {
+          artifact_type: string
+          authority_class: Database["public"]["Enums"]["ion_authority_class"]
+          content: string
+          content_hash: string
+          created_at: string
+          created_by_work_unit_id: string | null
+          id: string
+          metadata: Json
+          name: string
+          run_id: string
+          superseded_by: string | null
+          tokens_estimate: number
+          version: number
+        }
+        Insert: {
+          artifact_type?: string
+          authority_class?: Database["public"]["Enums"]["ion_authority_class"]
+          content?: string
+          content_hash?: string
+          created_at?: string
+          created_by_work_unit_id?: string | null
+          id?: string
+          metadata?: Json
+          name: string
+          run_id: string
+          superseded_by?: string | null
+          tokens_estimate?: number
+          version?: number
+        }
+        Update: {
+          artifact_type?: string
+          authority_class?: Database["public"]["Enums"]["ion_authority_class"]
+          content?: string
+          content_hash?: string
+          created_at?: string
+          created_by_work_unit_id?: string | null
+          id?: string
+          metadata?: Json
+          name?: string
+          run_id?: string
+          superseded_by?: string | null
+          tokens_estimate?: number
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ion_artifacts_created_by_work_unit_id_fkey"
+            columns: ["created_by_work_unit_id"]
+            isOneToOne: false
+            referencedRelation: "ion_work_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ion_artifacts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "ion_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ion_artifacts_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "ion_artifacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ion_commit_deltas: {
+        Row: {
+          artifacts_created: Json
+          child_work_suggested: Json
+          confidence: number
+          contradictions_found: Json
+          created_at: string
+          id: string
+          ledger_rows: Json
+          metadata: Json
+          questions_raised: Json
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          run_id: string
+          signals_emitted: Json
+          status: Database["public"]["Enums"]["ion_delta_status"]
+          work_unit_id: string
+        }
+        Insert: {
+          artifacts_created?: Json
+          child_work_suggested?: Json
+          confidence?: number
+          contradictions_found?: Json
+          created_at?: string
+          id?: string
+          ledger_rows?: Json
+          metadata?: Json
+          questions_raised?: Json
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          run_id: string
+          signals_emitted?: Json
+          status?: Database["public"]["Enums"]["ion_delta_status"]
+          work_unit_id: string
+        }
+        Update: {
+          artifacts_created?: Json
+          child_work_suggested?: Json
+          confidence?: number
+          contradictions_found?: Json
+          created_at?: string
+          id?: string
+          ledger_rows?: Json
+          metadata?: Json
+          questions_raised?: Json
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          run_id?: string
+          signals_emitted?: Json
+          status?: Database["public"]["Enums"]["ion_delta_status"]
+          work_unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ion_commit_deltas_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "ion_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ion_commit_deltas_work_unit_id_fkey"
+            columns: ["work_unit_id"]
+            isOneToOne: false
+            referencedRelation: "ion_work_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ion_context_packages: {
+        Row: {
+          allowed_actions: Json
+          artifact_refs: Json
+          content: string
+          content_hash: string
+          created_at: string
+          doctrine_refs: Json
+          id: string
+          open_question_refs: Json
+          run_id: string
+          tokens_estimate: number
+          version: number
+        }
+        Insert: {
+          allowed_actions?: Json
+          artifact_refs?: Json
+          content?: string
+          content_hash?: string
+          created_at?: string
+          doctrine_refs?: Json
+          id?: string
+          open_question_refs?: Json
+          run_id: string
+          tokens_estimate?: number
+          version?: number
+        }
+        Update: {
+          allowed_actions?: Json
+          artifact_refs?: Json
+          content?: string
+          content_hash?: string
+          created_at?: string
+          doctrine_refs?: Json
+          id?: string
+          open_question_refs?: Json
+          run_id?: string
+          tokens_estimate?: number
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ion_context_packages_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "ion_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ion_open_questions: {
+        Row: {
+          answer: string | null
+          answered_at: string | null
+          answered_by_work_unit_id: string | null
+          context: string
+          created_at: string
+          id: string
+          metadata: Json
+          priority: number
+          question: string
+          routed_to_work_unit_id: string | null
+          run_id: string
+          source_work_unit_id: string | null
+          status: Database["public"]["Enums"]["ion_question_status"]
+        }
+        Insert: {
+          answer?: string | null
+          answered_at?: string | null
+          answered_by_work_unit_id?: string | null
+          context?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          priority?: number
+          question: string
+          routed_to_work_unit_id?: string | null
+          run_id: string
+          source_work_unit_id?: string | null
+          status?: Database["public"]["Enums"]["ion_question_status"]
+        }
+        Update: {
+          answer?: string | null
+          answered_at?: string | null
+          answered_by_work_unit_id?: string | null
+          context?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          priority?: number
+          question?: string
+          routed_to_work_unit_id?: string | null
+          run_id?: string
+          source_work_unit_id?: string | null
+          status?: Database["public"]["Enums"]["ion_question_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ion_open_questions_answered_by_work_unit_id_fkey"
+            columns: ["answered_by_work_unit_id"]
+            isOneToOne: false
+            referencedRelation: "ion_work_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ion_open_questions_routed_to_work_unit_id_fkey"
+            columns: ["routed_to_work_unit_id"]
+            isOneToOne: false
+            referencedRelation: "ion_work_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ion_open_questions_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "ion_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ion_open_questions_source_work_unit_id_fkey"
+            columns: ["source_work_unit_id"]
+            isOneToOne: false
+            referencedRelation: "ion_work_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ion_runs: {
+        Row: {
+          autonomy_mode: string
+          completed_work_units: number
+          config: Json
+          created_at: string
+          goal: string
+          id: string
+          metadata: Json
+          priority_tier: number
+          state_snapshot: Json
+          status: Database["public"]["Enums"]["ion_run_status"]
+          stopped_at: string | null
+          total_tokens: number
+          total_work_units: number
+          updated_at: string
+        }
+        Insert: {
+          autonomy_mode?: string
+          completed_work_units?: number
+          config?: Json
+          created_at?: string
+          goal?: string
+          id?: string
+          metadata?: Json
+          priority_tier?: number
+          state_snapshot?: Json
+          status?: Database["public"]["Enums"]["ion_run_status"]
+          stopped_at?: string | null
+          total_tokens?: number
+          total_work_units?: number
+          updated_at?: string
+        }
+        Update: {
+          autonomy_mode?: string
+          completed_work_units?: number
+          config?: Json
+          created_at?: string
+          goal?: string
+          id?: string
+          metadata?: Json
+          priority_tier?: number
+          state_snapshot?: Json
+          status?: Database["public"]["Enums"]["ion_run_status"]
+          stopped_at?: string | null
+          total_tokens?: number
+          total_work_units?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ion_signals: {
+        Row: {
+          consumed: boolean
+          consumed_by_work_unit_id: string | null
+          created_at: string
+          id: string
+          payload: Json
+          run_id: string
+          signal_type: string
+          source_work_unit_id: string | null
+          target_protocol: Database["public"]["Enums"]["ion_protocol"] | null
+        }
+        Insert: {
+          consumed?: boolean
+          consumed_by_work_unit_id?: string | null
+          created_at?: string
+          id?: string
+          payload?: Json
+          run_id: string
+          signal_type: string
+          source_work_unit_id?: string | null
+          target_protocol?: Database["public"]["Enums"]["ion_protocol"] | null
+        }
+        Update: {
+          consumed?: boolean
+          consumed_by_work_unit_id?: string | null
+          created_at?: string
+          id?: string
+          payload?: Json
+          run_id?: string
+          signal_type?: string
+          source_work_unit_id?: string | null
+          target_protocol?: Database["public"]["Enums"]["ion_protocol"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ion_signals_consumed_by_work_unit_id_fkey"
+            columns: ["consumed_by_work_unit_id"]
+            isOneToOne: false
+            referencedRelation: "ion_work_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ion_signals_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "ion_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ion_signals_source_work_unit_id_fkey"
+            columns: ["source_work_unit_id"]
+            isOneToOne: false
+            referencedRelation: "ion_work_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ion_work_units: {
+        Row: {
+          allowed_writes: Json
+          assigned_at: string | null
+          completed_at: string | null
+          context_package_id: string | null
+          created_at: string
+          dependencies: string[]
+          description: string
+          error: string | null
+          id: string
+          input_data: Json
+          metadata: Json
+          output_contract: Json
+          priority: number
+          protocol: Database["public"]["Enums"]["ion_protocol"]
+          result_data: Json | null
+          run_id: string
+          shard_index: number
+          status: Database["public"]["Enums"]["ion_work_unit_status"]
+          title: string
+        }
+        Insert: {
+          allowed_writes?: Json
+          assigned_at?: string | null
+          completed_at?: string | null
+          context_package_id?: string | null
+          created_at?: string
+          dependencies?: string[]
+          description?: string
+          error?: string | null
+          id?: string
+          input_data?: Json
+          metadata?: Json
+          output_contract?: Json
+          priority?: number
+          protocol: Database["public"]["Enums"]["ion_protocol"]
+          result_data?: Json | null
+          run_id: string
+          shard_index?: number
+          status?: Database["public"]["Enums"]["ion_work_unit_status"]
+          title?: string
+        }
+        Update: {
+          allowed_writes?: Json
+          assigned_at?: string | null
+          completed_at?: string | null
+          context_package_id?: string | null
+          created_at?: string
+          dependencies?: string[]
+          description?: string
+          error?: string | null
+          id?: string
+          input_data?: Json
+          metadata?: Json
+          output_contract?: Json
+          priority?: number
+          protocol?: Database["public"]["Enums"]["ion_protocol"]
+          result_data?: Json | null
+          run_id?: string
+          shard_index?: number
+          status?: Database["public"]["Enums"]["ion_work_unit_status"]
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ion_work_units_context_package_id_fkey"
+            columns: ["context_package_id"]
+            isOneToOne: false
+            referencedRelation: "ion_context_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ion_work_units_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "ion_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       journal_entries: {
         Row: {
           content: string
@@ -1483,6 +1942,45 @@ export type Database = {
         | "shortcut_taking"
       gate_result: "pass" | "fail" | "warn" | "abstain"
       gate_type: "quality" | "safety" | "policy"
+      ion_authority_class:
+        | "authority"
+        | "witness"
+        | "plan"
+        | "audit"
+        | "generated_state"
+        | "stale_competitor"
+      ion_delta_status: "proposed" | "accepted" | "rejected" | "witness_only"
+      ion_protocol:
+        | "reconnaissance"
+        | "evidence"
+        | "consolidation"
+        | "review"
+        | "signal"
+        | "reflection"
+        | "system_map"
+        | "system_evolution"
+      ion_question_status: "open" | "answered" | "deferred" | "cancelled"
+      ion_run_status:
+        | "created"
+        | "reconnaissance"
+        | "evidence_pass"
+        | "consolidation"
+        | "review"
+        | "reconciliation"
+        | "densification"
+        | "expansion"
+        | "blocked"
+        | "completed"
+        | "failed"
+        | "stopped"
+      ion_work_unit_status:
+        | "pending"
+        | "assigned"
+        | "running"
+        | "completed"
+        | "failed"
+        | "blocked"
+        | "skipped"
       kappa_gate_result: "pass" | "abstain" | "fail"
       mission_status:
         | "drafted"
@@ -1681,6 +2179,49 @@ export const Constants = {
       ],
       gate_result: ["pass", "fail", "warn", "abstain"],
       gate_type: ["quality", "safety", "policy"],
+      ion_authority_class: [
+        "authority",
+        "witness",
+        "plan",
+        "audit",
+        "generated_state",
+        "stale_competitor",
+      ],
+      ion_delta_status: ["proposed", "accepted", "rejected", "witness_only"],
+      ion_protocol: [
+        "reconnaissance",
+        "evidence",
+        "consolidation",
+        "review",
+        "signal",
+        "reflection",
+        "system_map",
+        "system_evolution",
+      ],
+      ion_question_status: ["open", "answered", "deferred", "cancelled"],
+      ion_run_status: [
+        "created",
+        "reconnaissance",
+        "evidence_pass",
+        "consolidation",
+        "review",
+        "reconciliation",
+        "densification",
+        "expansion",
+        "blocked",
+        "completed",
+        "failed",
+        "stopped",
+      ],
+      ion_work_unit_status: [
+        "pending",
+        "assigned",
+        "running",
+        "completed",
+        "failed",
+        "blocked",
+        "skipped",
+      ],
       kappa_gate_result: ["pass", "abstain", "fail"],
       mission_status: [
         "drafted",

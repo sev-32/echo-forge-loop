@@ -764,3 +764,15 @@ export function IconContext({ size = 24, ...props }: IconProps) {
     </svg>
   );
 }
+
+export function IconION({ size = 24, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" {...props}>
+      {/* ION kernel — sovereign hexagonal core with state-transition arrows */}
+      <path d="M12 2l8.66 5v10L12 22 3.34 17V7z" />
+      <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.3" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+      <path d="M12 7v2M12 15v2M7.5 9.5l1.7 1M14.8 13.5l1.7 1M7.5 14.5l1.7-1M14.8 10.5l1.7-1" />
+    </svg>
+  );
+}

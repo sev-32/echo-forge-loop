@@ -20,3 +20,12 @@ verify_jwt = false
 
 [functions.deep-research]
 verify_jwt = false
+
+[functions.ion-daemon]
+verify_jwt = false
+
+[functions.ion-worker]
+verify_jwt = false
+
+[functions.ion-recon]
+verify_jwt = false

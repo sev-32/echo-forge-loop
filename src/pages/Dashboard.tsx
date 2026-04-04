@@ -4,6 +4,7 @@ import { PanelErrorBoundary } from '@/components/shell/ErrorBoundary';
 import { AIMChat } from '@/components/AIMChat';
 import { DocumentBuilder } from '@/components/docs/DocumentBuilder';
 import { DeepResearchPanel } from '@/components/DeepResearchPanel';
+import { IONPanel } from '@/components/IONPanel';
 import { RunHistoryPanel } from '@/components/RunHistoryPanel';
 import { MemoryPanel } from '@/components/MemoryPanel';
 import { MissionPanel } from '@/components/MissionPanel';
@@ -221,6 +222,11 @@ export default function Dashboard() {
         {/* ═══ Deep Research ═══ */}
         <PanelErrorBoundary fallbackTitle="Deep Research">
           {activeTab === 'research' && <DeepResearchPanel />}
+        </PanelErrorBoundary>
+
+        {/* ═══ ION Kernel ═══ */}
+        <PanelErrorBoundary fallbackTitle="ION Kernel">
+          {activeTab === 'ion' && <IONPanel />}
         </PanelErrorBoundary>
 
         {/* ═══ Other Panels ═══ */}
