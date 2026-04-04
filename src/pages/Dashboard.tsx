@@ -224,6 +224,11 @@ export default function Dashboard() {
           {activeTab === 'research' && <DeepResearchPanel />}
         </PanelErrorBoundary>
 
+        {/* ═══ ION Kernel ═══ */}
+        <PanelErrorBoundary fallbackTitle="ION Kernel">
+          {activeTab === 'ion' && <IONPanel />}
+        </PanelErrorBoundary>
+
         {/* ═══ Other Panels ═══ */}
         <PanelErrorBoundary fallbackTitle="Run History">
           {activeTab === 'runs' && <RunHistoryPanel />}
