@@ -164,6 +164,21 @@ async function step(db: any, runId: string) {
   const runningWU = state.work_units.filter((wu: any) => wu.status === "running");
 
   if (runningWU.length > 0) {
+    // Recover stale running WUs (assigned > 2 min ago with no completion)
+    const staleThreshold = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    const staleWUs = runningWU.filter((wu: any) => wu.assigned_at && wu.assigned_at < staleThreshold);
+    if (staleWUs.length > 0) {
+      for (const wu of staleWUs) {
+        // Check if a delta was created (worker completed but WU status wasn't updated)
+        const hasDelta = state.deltas.some((d: any) => d.work_unit_id === wu.id);
+        if (hasDelta) {
+          await db.from("ion_work_units").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", wu.id);
+        } else {
+          await db.from("ion_work_units").update({ status: "failed", error: "Timed out after 2 minutes" }).eq("id", wu.id);
+        }
+      }
+      return { status: "recovered", recovered: staleWUs.length, message: "Recovered stale work units" };
+    }
     return { status: "waiting", message: "Work units still running", running: runningWU.length };
   }
 
