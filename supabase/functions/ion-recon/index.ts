@@ -21,57 +21,53 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { run_id, action } = await req.json();
+    const { run_id } = await req.json();
     if (!run_id) throw new Error("run_id is required");
     const db = supabaseAdmin();
 
-    // Load all completed deltas and artifacts
-    const { data: deltas } = await db.from("ion_commit_deltas").select("*").eq("run_id", run_id).eq("status", "accepted");
     const { data: artifacts } = await db.from("ion_artifacts").select("*").eq("run_id", run_id);
     const { data: questions } = await db.from("ion_open_questions").select("*").eq("run_id", run_id).eq("status", "open");
     const { data: run } = await db.from("ion_runs").select("*").eq("id", run_id).single();
 
     if (!run) throw new Error("Run not found");
 
-    const artifactSummary = (artifacts || []).map((a: any) =>
-      `[${a.authority_class}] ${a.name} (${a.artifact_type}): ${a.content.substring(0, 500)}`
-    ).join("\n\n");
+    const artifactSummary = (artifacts || [])
+      .map((a: any) => `[${a.authority_class}] ${a.name} (${a.artifact_type}): ${a.content.substring(0, 300)}`)
+      .join("\n\n");
 
-    const questionSummary = (questions || []).map((q: any) => `- ${q.question}`).join("\n");
+    const questionSummary = (questions || []).map((q: any, i: number) => `${i + 1}. [${q.id}] ${q.question}`).join("\n");
 
-    const reconPrompt = `You are the ION Reconciliation Engine. Your job is to merge, reconcile, and resolve the distributed cognitive work performed so far.
+    const reconPrompt = `You are the ION Reconciliation Engine. Merge and reconcile distributed cognitive work.
 
 Run goal: ${run.goal}
 
-Artifacts produced (${(artifacts || []).length}):
-${artifactSummary}
+Artifacts (${(artifacts || []).length}):
+${artifactSummary || "(none)"}
 
 Open questions (${(questions || []).length}):
 ${questionSummary || "(none)"}
 
 Tasks:
-1. Merge overlapping findings from parallel work units
-2. Answer open questions using completed evidence
-3. Detect unbound or unsupported claims
-4. Identify contradictions that remain live vs resolved
-5. Produce a reconciled summary
+1. Merge overlapping findings
+2. Answer open questions using evidence (reference question IDs)
+3. Detect contradictions
+4. Produce a reconciled summary
 
 Return JSON:
 {
   "reconciled_summary": "...",
-  "answered_questions": [{"question_id": "...", "answer": "..."}],
+  "answered_questions": [{"question_id": "uuid-here", "answer": "..."}],
   "live_contradictions": [{"description": "...", "severity": "high|medium|low"}],
-  "unbound_claims": ["..."],
   "merged_findings": ["..."],
-  "recommendations": ["..."],
   "confidence": 0.0-1.0
-}`;
+}
+Return ONLY JSON, no markdown.`;
 
     const aiResp = await fetch(AI_GATEWAY, {
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "google/gemini-2.5-flash",
         messages: [{ role: "user", content: reconPrompt }],
       }),
     });
@@ -93,7 +89,7 @@ Return JSON:
       parsed = { reconciled_summary: rawContent, confidence: 0.5 };
     }
 
-    // Store reconciliation as an authority artifact
+    // Store reconciliation artifact
     await db.from("ion_artifacts").insert({
       run_id,
       name: "reconciliation-report",
@@ -125,6 +121,7 @@ Return JSON:
       answered_questions: (parsed.answered_questions || []).length,
       live_contradictions: (parsed.live_contradictions || []).length,
       confidence: parsed.confidence || 0.5,
+      tokens,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

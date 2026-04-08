@@ -237,6 +237,36 @@ export function useIONKernel() {
     }
   }, [invoke]);
 
+  const answerQuestion = useCallback(async (questionId: string, answer: string) => {
+    if (!activeRunId) return;
+    setLoading(true);
+    try {
+      const data = await invoke('answer_question', { run_id: activeRunId, question_id: questionId, answer });
+      await refreshState();
+      return data;
+    } catch (e: any) {
+      setError(e.message);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, [activeRunId, invoke, refreshState]);
+
+  const emitSignal = useCallback(async (signalType: string, payload: any, targetProtocol?: string) => {
+    if (!activeRunId) return;
+    setLoading(true);
+    try {
+      const data = await invoke('emit_signal', { run_id: activeRunId, signal_type: signalType, payload, target_protocol: targetProtocol });
+      await refreshState();
+      return data;
+    } catch (e: any) {
+      setError(e.message);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, [activeRunId, invoke, refreshState]);
+
   return {
     runs,
     activeRunId,
@@ -252,5 +282,7 @@ export function useIONKernel() {
     selectRun,
     refreshRuns,
     refreshState,
+    answerQuestion,
+    emitSignal,
   };
 }
