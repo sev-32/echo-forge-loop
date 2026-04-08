@@ -25,11 +25,12 @@ interface RunState {
   pending_work_units: number;
   completed_work_units: number;
   total_work_units: number;
+  failed_work_units: number;
 }
 
 function computeNextProtocol(status: string, state: RunState): string | null {
   // Tier 1: Hard blockers
-  if (state.blockers > 0) return null; // blocked, cannot proceed
+  if (state.blockers > 0) return null;
 
   // Tier 2: Protocol obligations  
   if (status === "created") return "reconnaissance";
@@ -132,8 +133,7 @@ async function getState(db: any, runId: string) {
   const { data: signals } = await db
     .from("ion_signals")
     .select("*")
-    .eq("run_id", runId)
-    .eq("consumed", false);
+    .eq("run_id", runId);
 
   const { data: artifacts } = await db
     .from("ion_artifacts")
@@ -141,7 +141,14 @@ async function getState(db: any, runId: string) {
     .eq("run_id", runId)
     .order("created_at", { ascending: true });
 
-  return { run, work_units: workUnits || [], deltas: deltas || [], questions: questions || [], signals: signals || [], artifacts: artifacts || [] };
+  return {
+    run,
+    work_units: workUnits || [],
+    deltas: deltas || [],
+    questions: questions || [],
+    signals: signals || [],
+    artifacts: artifacts || [],
+  };
 }
 
 async function step(db: any, runId: string) {
@@ -160,24 +167,60 @@ async function step(db: any, runId: string) {
     return { status: "waiting", message: "Work units still running", running: runningWU.length };
   }
 
-  // Check for proposed deltas that need review
+  // Check for proposed deltas needing review
   const proposedDeltas = state.deltas.filter((d: any) => d.status === "proposed");
   if (proposedDeltas.length > 0) {
-    // Auto-review deltas (in supervised mode, daemon reviews)
-    for (const delta of proposedDeltas) {
-      await reviewDelta(db, runId, delta.id, "accept", "Daemon auto-review");
+    const autonomy = run.autonomy_mode || "supervised";
+    if (autonomy === "autonomous") {
+      // Auto-review all
+      for (const delta of proposedDeltas) {
+        await reviewDelta(db, runId, delta.id, "accept", "Daemon auto-review (autonomous mode)");
+      }
+      return { status: "reviewed", deltas_reviewed: proposedDeltas.length, mode: "auto" };
+    } else {
+      // In supervised mode, auto-review with lower confidence threshold
+      const highConfidence = proposedDeltas.filter((d: any) => d.confidence >= 0.7);
+      const lowConfidence = proposedDeltas.filter((d: any) => d.confidence < 0.7);
+      
+      for (const delta of highConfidence) {
+        await reviewDelta(db, runId, delta.id, "accept", "Daemon auto-review (high confidence)");
+      }
+      
+      if (lowConfidence.length > 0) {
+        return {
+          status: "review_needed",
+          auto_reviewed: highConfidence.length,
+          awaiting_review: lowConfidence.map((d: any) => ({
+            id: d.id, confidence: d.confidence, work_unit_id: d.work_unit_id,
+          })),
+        };
+      }
+      return { status: "reviewed", deltas_reviewed: highConfidence.length, mode: "supervised" };
     }
-    return { status: "reviewed", deltas_reviewed: proposedDeltas.length };
   }
 
   if (pendingWU.length > 0) {
     // Execute the highest priority pending work unit
     const nextWU = pendingWU.sort((a: any, b: any) => b.priority - a.priority)[0];
     
-    // Mark as running
-    await db.from("ion_work_units").update({ status: "running", assigned_at: new Date().toISOString() }).eq("id", nextWU.id);
+    // Check dependencies
+    if (nextWU.dependencies && nextWU.dependencies.length > 0) {
+      const depStatuses = state.work_units
+        .filter((wu: any) => nextWU.dependencies.includes(wu.id))
+        .map((wu: any) => wu.status);
+      
+      if (depStatuses.some((s: string) => s !== "completed")) {
+        return { status: "blocked", message: "Dependencies not met", work_unit: nextWU.id };
+      }
+    }
 
-    // Execute via ion-worker (call the worker function)
+    // Mark as running
+    await db.from("ion_work_units").update({
+      status: "running",
+      assigned_at: new Date().toISOString(),
+    }).eq("id", nextWU.id);
+
+    // Execute via ion-worker
     try {
       const workerUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/ion-worker`;
       const resp = await fetch(workerUrl, {
@@ -192,14 +235,14 @@ async function step(db: any, runId: string) {
       if (!resp.ok) {
         const errText = await resp.text();
         await db.from("ion_work_units").update({ status: "failed", error: errText }).eq("id", nextWU.id);
-        return { status: "error", message: errText };
+        return { status: "error", work_unit: nextWU.id, message: errText };
       }
 
       const result = await resp.json();
       return { status: "executed", work_unit: nextWU.id, result };
     } catch (err) {
       await db.from("ion_work_units").update({ status: "failed", error: String(err) }).eq("id", nextWU.id);
-      return { status: "error", message: String(err) };
+      return { status: "error", work_unit: nextWU.id, message: String(err) };
     }
   }
 
@@ -211,31 +254,35 @@ async function step(db: any, runId: string) {
     pending_work_units: pendingWU.length,
     completed_work_units: state.work_units.filter((wu: any) => wu.status === "completed").length,
     total_work_units: state.work_units.length,
+    failed_work_units: state.work_units.filter((wu: any) => wu.status === "failed").length,
   };
 
   const nextProtocol = computeNextProtocol(run.status, runState);
 
   if (!nextProtocol) {
-    // Check if we should complete
-    if (runState.completed_work_units === runState.total_work_units && runState.total_work_units > 0) {
+    // Check completion
+    const activeWU = state.work_units.filter((wu: any) => !["completed", "failed", "skipped"].includes(wu.status));
+    if (activeWU.length === 0 && runState.completed_work_units > 0) {
       await db.from("ion_runs").update({ status: "completed", stopped_at: new Date().toISOString() }).eq("id", runId);
       return { status: "completed", message: "All work units finished" };
     }
     return { status: "blocked", message: "No legal transitions available", state: runState };
   }
 
-  // Use AI to plan the next work units based on completed work
-  const completedArtifacts = state.artifacts.map((a: any) => `[${a.authority_class}] ${a.name}: ${a.content.substring(0, 500)}`).join("\n\n");
+  // Plan next work units using AI
+  const completedArtifacts = state.artifacts
+    .map((a: any) => `[${a.authority_class}] ${a.name}: ${a.content.substring(0, 300)}`)
+    .join("\n\n");
 
-  const planPrompt = `You are the ION daemon sequencer. Based on the completed work so far, create the next work unit(s) for protocol "${nextProtocol}".
+  const planPrompt = `You are the ION daemon sequencer. Create work unit(s) for protocol "${nextProtocol}".
 
 Run goal: ${run.goal}
 Current status: ${run.status}
 Completed artifacts:
-${completedArtifacts || "(none yet)"}
+${completedArtifacts || "(none)"}
 Open questions: ${state.questions.filter((q: any) => q.status === "open").map((q: any) => q.question).join("; ") || "(none)"}
 
-Return a JSON array of work units to create. Each has: { title, description, priority (1-100), input_data: {} }
+Return a JSON array of work units. Each: { "title": "...", "description": "...", "priority": 1-100, "input_data": {} }
 Return ONLY the JSON array, no markdown.`;
 
   const aiResp = await fetch(AI_GATEWAY, {
@@ -247,50 +294,42 @@ Return ONLY the JSON array, no markdown.`;
     }),
   });
 
+  let planned: any[];
   if (!aiResp.ok) {
     const t = await aiResp.text();
     console.error("AI planning failed:", t);
-    // Fallback: create a single generic work unit
-    const { data: ctx } = await db.from("ion_context_packages").insert({
-      run_id: runId, version: 1, content: JSON.stringify({ goal: run.goal, protocol: nextProtocol }),
-      content_hash: "", doctrine_refs: [], artifact_refs: state.artifacts.map((a: any) => a.id),
-    }).select().single();
-
-    await db.from("ion_work_units").insert({
-      run_id: runId, protocol: nextProtocol, title: `${nextProtocol} pass`,
-      description: `Execute ${nextProtocol} protocol for: ${run.goal}`,
-      priority: 50, context_package_id: ctx?.id, input_data: { goal: run.goal },
-    });
-    await db.from("ion_runs").update({ 
-      status: STATUS_AFTER_PROTOCOL[nextProtocol] || run.status,
-      total_work_units: (run.total_work_units || 0) + 1 
-    }).eq("id", runId);
-    return { status: "planned", protocol: nextProtocol, units_created: 1 };
-  }
-
-  const aiData = await aiResp.json();
-  const content = aiData.choices?.[0]?.message?.content || "[]";
-  
-  let planned: any[];
-  try {
-    const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    planned = JSON.parse(cleaned);
-    if (!Array.isArray(planned)) planned = [planned];
-  } catch {
     planned = [{ title: `${nextProtocol} pass`, description: `Execute ${nextProtocol} for: ${run.goal}`, priority: 50, input_data: { goal: run.goal } }];
+  } else {
+    const aiData = await aiResp.json();
+    const content = aiData.choices?.[0]?.message?.content || "[]";
+    try {
+      const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      planned = JSON.parse(cleaned);
+      if (!Array.isArray(planned)) planned = [planned];
+    } catch {
+      planned = [{ title: `${nextProtocol} pass`, description: `Execute ${nextProtocol} for: ${run.goal}`, priority: 50, input_data: { goal: run.goal } }];
+    }
   }
 
-  // Create context package for this batch
+  // Create context package
   const { data: ctx } = await db.from("ion_context_packages").insert({
-    run_id: runId, version: 1, content: JSON.stringify({ goal: run.goal, protocol: nextProtocol, artifacts: state.artifacts.map((a: any) => a.id) }),
-    content_hash: "", doctrine_refs: [], artifact_refs: state.artifacts.map((a: any) => a.id),
+    run_id: runId,
+    version: 1,
+    content: JSON.stringify({ goal: run.goal, protocol: nextProtocol, artifacts: state.artifacts.map((a: any) => a.id) }),
+    content_hash: "",
+    doctrine_refs: [],
+    artifact_refs: state.artifacts.map((a: any) => a.id),
   }).select().single();
 
   for (const p of planned) {
     await db.from("ion_work_units").insert({
-      run_id: runId, protocol: nextProtocol, title: p.title || `${nextProtocol} unit`,
-      description: p.description || "", priority: p.priority || 50,
-      context_package_id: ctx?.id, input_data: p.input_data || {},
+      run_id: runId,
+      protocol: nextProtocol,
+      title: p.title || `${nextProtocol} unit`,
+      description: p.description || "",
+      priority: p.priority || 50,
+      context_package_id: ctx?.id,
+      input_data: p.input_data || {},
     });
   }
 
@@ -304,10 +343,15 @@ Return ONLY the JSON array, no markdown.`;
 
 async function reviewDelta(db: any, runId: string, deltaId: string, verdict: string, notes?: string) {
   const validVerdicts = ["accept", "reject", "witness_only"];
-  if (!validVerdicts.includes(verdict)) throw new Error(`Invalid verdict: ${verdict}`);
+  if (!validVerdicts.includes(verdict)) throw new Error(`Invalid verdict: ${verdict}. Valid: ${validVerdicts.join(", ")}`);
 
   const statusMap: Record<string, string> = { accept: "accepted", reject: "rejected", witness_only: "witness_only" };
 
+  // Fetch delta first
+  const { data: delta } = await db.from("ion_commit_deltas").select("*").eq("id", deltaId).single();
+  if (!delta) throw new Error("Delta not found");
+
+  // Update delta status
   await db.from("ion_commit_deltas").update({
     status: statusMap[verdict],
     reviewed_by: "daemon",
@@ -315,16 +359,16 @@ async function reviewDelta(db: any, runId: string, deltaId: string, verdict: str
     review_notes: notes || "",
   }).eq("id", deltaId);
 
-  // If accepted, materialize artifacts
-  const { data: delta } = await db.from("ion_commit_deltas").select("*").eq("id", deltaId).single();
-  if (delta && verdict === "accept") {
+  // If accepted or witness_only, materialize artifacts
+  if (verdict === "accept" || verdict === "witness_only") {
+    const authorityClass = verdict === "accept" ? undefined : "witness"; // keep original if accepting
     const artifacts = delta.artifacts_created || [];
     for (const art of artifacts) {
       await db.from("ion_artifacts").insert({
         run_id: runId,
         name: art.name || "unnamed",
         content: art.content || "",
-        authority_class: verdict === "accept" ? "authority" : "witness",
+        authority_class: authorityClass || art.authority_class || "witness",
         content_hash: art.content_hash || "",
         created_by_work_unit_id: delta.work_unit_id,
         artifact_type: art.artifact_type || "document",
@@ -333,19 +377,18 @@ async function reviewDelta(db: any, runId: string, deltaId: string, verdict: str
     }
 
     // Materialize open questions
-    const questions = delta.questions_raised || [];
-    for (const q of questions) {
+    for (const q of (delta.questions_raised || [])) {
       await db.from("ion_open_questions").insert({
         run_id: runId,
         question: typeof q === "string" ? q : q.question || String(q),
         source_work_unit_id: delta.work_unit_id,
         priority: typeof q === "object" ? q.priority || 50 : 50,
+        context: typeof q === "object" ? q.context || "" : "",
       });
     }
 
     // Materialize signals
-    const signals = delta.signals_emitted || [];
-    for (const sig of signals) {
+    for (const sig of (delta.signals_emitted || [])) {
       await db.from("ion_signals").insert({
         run_id: runId,
         signal_type: sig.type || "info",
@@ -354,19 +397,32 @@ async function reviewDelta(db: any, runId: string, deltaId: string, verdict: str
         payload: sig.payload || sig,
       });
     }
-
-    // Update completed count
-    await db.from("ion_runs").update({
-      completed_work_units: db.rpc ? undefined : undefined, // Will be computed
-    }).eq("id", runId);
   }
 
   return { status: "reviewed", verdict, delta_id: deltaId };
 }
 
+async function answerQuestion(db: any, runId: string, questionId: string, answer: string) {
+  await db.from("ion_open_questions").update({
+    status: "answered",
+    answer,
+    answered_at: new Date().toISOString(),
+  }).eq("id", questionId).eq("run_id", runId);
+  return { status: "answered", question_id: questionId };
+}
+
+async function emitSignal(db: any, runId: string, signalType: string, payload: any, targetProtocol?: string) {
+  const { data } = await db.from("ion_signals").insert({
+    run_id: runId,
+    signal_type: signalType,
+    target_protocol: targetProtocol || null,
+    payload: payload || {},
+  }).select().single();
+  return { status: "emitted", signal: data };
+}
+
 async function stopRun(db: any, runId: string) {
   await db.from("ion_runs").update({ status: "stopped", stopped_at: new Date().toISOString() }).eq("id", runId);
-  // Cancel pending work units
   await db.from("ion_work_units").update({ status: "skipped" }).eq("run_id", runId).eq("status", "pending");
   return { status: "stopped" };
 }
@@ -381,7 +437,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { action, run_id, goal, config, delta_id, verdict, notes, max_steps } = await req.json();
+    const body = await req.json();
+    const { action, run_id, goal, config, delta_id, verdict, notes, max_steps, question_id, answer, signal_type, payload, target_protocol } = body;
     const db = supabaseAdmin();
 
     let result: any;
@@ -405,7 +462,6 @@ serve(async (req) => {
           const r = await step(db, run_id);
           steps.push(r);
           if (["completed", "failed", "stopped", "blocked", "terminal"].includes(r.status)) break;
-          // Small delay to avoid hammering
           await new Promise(resolve => setTimeout(resolve, 200));
         }
         result = { status: "ran", steps_executed: steps.length, steps };
@@ -415,6 +471,16 @@ serve(async (req) => {
       case "review_delta":
         if (!run_id || !delta_id || !verdict) throw new Error("run_id, delta_id, verdict required");
         result = await reviewDelta(db, run_id, delta_id, verdict, notes);
+        break;
+
+      case "answer_question":
+        if (!run_id || !question_id || !answer) throw new Error("run_id, question_id, answer required");
+        result = await answerQuestion(db, run_id, question_id, answer);
+        break;
+
+      case "emit_signal":
+        if (!run_id || !signal_type) throw new Error("run_id, signal_type required");
+        result = await emitSignal(db, run_id, signal_type, payload, target_protocol);
         break;
 
       case "get_state":
