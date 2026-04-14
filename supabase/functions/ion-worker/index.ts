@@ -17,36 +17,44 @@ function supabaseAdmin() {
   );
 }
 
-// ─── Protocol system prompts ───
+// ─── Protocol system prompts (cognitive contracts from ION doctrine) ───
+// Each protocol defines what the worker MAY do, MUST produce, and MUST NOT do.
 
 const PROTOCOL_PROMPTS: Record<string, string> = {
-  reconnaissance: `You are an ION RECONNAISSANCE worker. Your job is to MAP THE SURFACE of a problem domain WITHOUT synthesizing or judging. 
+  reconnaissance: `You are an ION RECONNAISSANCE worker. Your job is to MAP THE SURFACE of a problem domain WITHOUT synthesizing or judging.
 
-Rules:
+KERNEL RULES (K1 - Bounded Work Unit):
 - Identify all visible domains, entities, relationships, and boundaries
 - Create an inventory of what exists
 - Propose a batch plan for deeper investigation
 - Do NOT make conclusions or architecture decisions
 - Do NOT skip anything visible
 
+You must return a CommitDelta with artifacts classified by AUTHORITY CLASS:
+- WITNESS: your observations (most of what you produce)
+- PLAN: your batch plan for next steps
+
 Output format (JSON):
 {
   "inventory": [{"name": "...", "type": "...", "description": "..."}],
   "domains_found": ["..."],
   "boundaries": ["..."],
-  "batch_plan": [{"title": "...", "description": "...", "priority": 1-100}],
+  "batch_plan": [{"title": "...", "description": "...", "priority": 1-100, "protocol": "evidence"}],
   "open_questions": ["..."],
-  "signals": []
+  "signals": [],
+  "confidence": 0.0-1.0
 }`,
 
   evidence: `You are an ION EVIDENCE worker. Your job is ATOMIC FORENSIC EXTRACTION from a single artifact or topic.
 
-Rules:
+KERNEL RULES (K1 - Bounded Work Unit):
 - Extract exact observations, relationships, and dependencies
-- Record every meaningful detail externally
+- Record every meaningful detail externally (the filesystem IS memory)
 - Do NOT cross-reference with other artifacts (that's CONSOLIDATION's job)
 - Do NOT synthesize or draw broad conclusions
 - Be exhaustive and precise
+
+AUTHORITY CLASS: Everything you produce is WITNESS class (forensic evidence).
 
 Output format (JSON):
 {
@@ -55,17 +63,20 @@ Output format (JSON):
   "dependencies_found": ["..."],
   "anomalies": ["..."],
   "open_questions": ["..."],
-  "signals": []
+  "signals": [],
+  "confidence": 0.0-1.0
 }`,
 
   consolidation: `You are an ION CONSOLIDATION worker. Your job is CROSS-ARTIFACT SYNTHESIS.
 
-Rules:
+KERNEL RULES:
 - Read evidence artifacts and derive higher-order patterns
 - Identify subsystem fingerprints and lineage edges
-- Detect authority competition between artifacts  
+- Detect authority competition between artifacts
 - Distinguish witness-only from authoritative claims
-- Identify contradictions that must be preserved
+- Identify contradictions that MUST BE PRESERVED (not resolved by rhetoric)
+
+AUTHORITY CLASS: Your synthesis is AUTHORITY class only if confidence > 0.8. Otherwise WITNESS.
 
 Output format (JSON):
 {
@@ -75,17 +86,20 @@ Output format (JSON):
   "contradictions": [{"a": "...", "b": "...", "nature": "..."}],
   "synthesis": "...",
   "open_questions": ["..."],
-  "signals": []
+  "signals": [],
+  "confidence": 0.0-1.0
 }`,
 
   review: `You are an ION REVIEW worker. Your job is VALIDATION AND DISPUTE RESOLUTION.
 
-Rules:
+KERNEL RULES (K6 - Review and Escalation):
 - Check whether a proposed delta is legal and well-founded
 - Verify lineage claims have sufficient basis
 - Check for authority judgment without enough evidence
 - Identify contradictions being resolved by rhetoric instead of evidence
 - Recommend: accept, reject, or downgrade to witness-only
+
+AUTHORITY CLASS: Your verdict is AUDIT class.
 
 Output format (JSON):
 {
@@ -94,29 +108,28 @@ Output format (JSON):
   "findings": [{"issue": "...", "severity": "critical|warning|info", "detail": "..."}],
   "recommendation": "...",
   "open_questions": ["..."],
-  "signals": []
+  "signals": [],
+  "authority_downgrades": [{"artifact": "...", "from": "authority", "to": "witness", "reason": "..."}]
 }`,
 
   signal: `You are an ION SIGNAL worker. Your job is to emit STRUCTURED PROPAGATION MESSAGES.
 
-Rules:
-- Analyze the current state and identify what must be communicated
-- Create machine-readable signals for other protocol lanes
-- Be precise and actionable
-
 Output format (JSON):
 {
   "signals": [{"type": "blocker|dependency|contradiction|info|escalation", "target_protocol": "...", "payload": {}, "priority": 1-100}],
-  "open_questions": ["..."]
+  "open_questions": ["..."],
+  "confidence": 0.0-1.0
 }`,
 
   reflection: `You are an ION REFLECTION worker. Your job is META-COGNITION about the system's own reasoning.
 
-Rules:
+KERNEL RULES:
 - Examine the quality of reasoning so far
 - Identify epistemic shifts and ambiguity changes
 - Detect cognitive biases or blind spots
 - Suggest protocol or architectural improvements
+
+AUTHORITY CLASS: Your output is AUDIT class.
 
 Output format (JSON):
 {
@@ -125,8 +138,10 @@ Output format (JSON):
   "blind_spots": ["..."],
   "epistemic_shifts": ["..."],
   "improvement_suggestions": ["..."],
+  "quality_score": 0.0-1.0,
   "open_questions": ["..."],
-  "signals": []
+  "signals": [],
+  "confidence": 0.0-1.0
 }`,
 
   system_map: `You are an ION SYSTEM_MAP worker. Map the architecture of the system being analyzed.
@@ -137,7 +152,8 @@ Output format (JSON):
   "connections": [{"from": "...", "to": "...", "type": "..."}],
   "layers": [{"name": "...", "components": ["..."]}],
   "open_questions": ["..."],
-  "signals": []
+  "signals": [],
+  "confidence": 0.0-1.0
 }`,
 
   system_evolution: `You are an ION SYSTEM_EVOLUTION worker. Examine whether the protocol architecture itself needs modification.
@@ -148,11 +164,12 @@ Output format (JSON):
   "architectural_gaps": ["..."],
   "proposed_changes": [{"target": "...", "change": "...", "rationale": "..."}],
   "open_questions": ["..."],
-  "signals": []
+  "signals": [],
+  "confidence": 0.0-1.0
 }`,
 };
 
-// Protocol-to-model mapping
+// Protocol-to-model mapping (from ION architecture)
 const PROTOCOL_MODELS: Record<string, string> = {
   reconnaissance: "google/gemini-3-flash-preview",
   evidence: "google/gemini-2.5-flash",
@@ -164,6 +181,30 @@ const PROTOCOL_MODELS: Record<string, string> = {
   system_evolution: "google/gemini-2.5-pro",
 };
 
+// Protocol-to-authority class mapping
+const PROTOCOL_AUTHORITY: Record<string, string> = {
+  reconnaissance: "witness",
+  evidence: "witness",
+  consolidation: "authority",
+  review: "audit",
+  signal: "generated_state",
+  reflection: "audit",
+  system_map: "witness",
+  system_evolution: "plan",
+};
+
+// Protocol-to-artifact type mapping
+const PROTOCOL_ARTIFACT_TYPE: Record<string, string> = {
+  reconnaissance: "reconnaissance_map",
+  evidence: "evidence_extract",
+  consolidation: "consolidation_report",
+  review: "review_verdict",
+  signal: "signal_emission",
+  reflection: "reflection_report",
+  system_map: "system_map",
+  system_evolution: "evolution_proposal",
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -173,26 +214,31 @@ serve(async (req) => {
 
     const db = supabaseAdmin();
 
-    // Load work unit
+    // ─── Step 1: Load work unit (DISPATCHED → RUNNING transition) ───
     const { data: wu, error: wuErr } = await db
-      .from("ion_work_units")
-      .select("*")
-      .eq("id", work_unit_id)
-      .single();
+      .from("ion_work_units").select("*").eq("id", work_unit_id).single();
     if (wuErr || !wu) throw new Error(`Work unit not found: ${wuErr?.message}`);
 
-    // Load context package if present
+    // Enforce state machine: only dispatched or pending can run
+    if (!["dispatched", "pending", "running"].includes(wu.status)) {
+      throw new Error(`Work unit not in dispatchable state: ${wu.status}`);
+    }
+
+    // Transition to RUNNING
+    await db.from("ion_work_units").update({
+      status: "running",
+      assigned_at: wu.assigned_at || new Date().toISOString(),
+    }).eq("id", work_unit_id);
+
+    // ─── Step 2: Load context package ───
     let contextContent = "";
     if (wu.context_package_id) {
       const { data: ctx } = await db
-        .from("ion_context_packages")
-        .select("*")
-        .eq("id", wu.context_package_id)
-        .single();
+        .from("ion_context_packages").select("*").eq("id", wu.context_package_id).single();
       if (ctx) contextContent = ctx.content;
     }
 
-    // Load existing artifacts for this run (for context)
+    // ─── Step 3: Load existing artifacts for run context ───
     const { data: artifacts } = await db
       .from("ion_artifacts")
       .select("name, content, authority_class, artifact_type")
@@ -204,7 +250,7 @@ serve(async (req) => {
       .map((a: any) => `[${a.authority_class.toUpperCase()}] ${a.name}:\n${a.content.substring(0, 1000)}`)
       .join("\n\n---\n\n");
 
-    // Build the prompt
+    // ─── Step 4: Build the prompt with kernel rules ───
     const protocol = wu.protocol as string;
     const systemPrompt = PROTOCOL_PROMPTS[protocol] || PROTOCOL_PROMPTS.evidence;
     const model = PROTOCOL_MODELS[protocol] || "google/gemini-3-flash-preview";
@@ -216,9 +262,10 @@ Input data: ${JSON.stringify(wu.input_data)}
 ${contextContent ? `Context package:\n${contextContent}\n` : ""}
 ${artifactContext ? `Existing artifacts:\n${artifactContext}\n` : ""}
 
-Execute this ${protocol.toUpperCase()} protocol work unit and return the result as specified in the output format.`;
+Execute this ${protocol.toUpperCase()} protocol work unit and return the result as specified in the output format.
+Remember: You are producing a CommitDelta (proposed state mutation). The daemon will decide whether your output becomes AUTHORITY, WITNESS, or is rejected.`;
 
-    // Call AI
+    // ─── Step 5: Call AI ───
     const aiResp = await fetch(AI_GATEWAY, {
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
@@ -235,7 +282,7 @@ Execute this ${protocol.toUpperCase()} protocol work unit and return the result 
       const errText = await aiResp.text();
       if (aiResp.status === 429) {
         await db.from("ion_work_units").update({ status: "failed", error: "Rate limited" }).eq("id", work_unit_id);
-        return new Response(JSON.stringify({ error: "Rate limited, please try again later" }), {
+        return new Response(JSON.stringify({ error: "Rate limited" }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -246,57 +293,39 @@ Execute this ${protocol.toUpperCase()} protocol work unit and return the result 
     const rawContent = aiData.choices?.[0]?.message?.content || "{}";
     const tokens = (aiData.usage?.prompt_tokens || 0) + (aiData.usage?.completion_tokens || 0);
 
-    // Parse the structured output
+    // ─── Step 6: Parse structured output ───
     let parsed: any;
     try {
       const cleaned = rawContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       parsed = JSON.parse(cleaned);
     } catch {
-      parsed = { raw_output: rawContent, parse_error: true };
+      parsed = { raw_output: rawContent, parse_error: true, confidence: 0.3 };
     }
 
-    // Create a CommitDelta from the worker's output
-    const artifactsCreated: any[] = [];
+    // ─── Step 7: Build CommitDelta artifacts ───
+    const baseAuthority = PROTOCOL_AUTHORITY[protocol] || "witness";
+    // If consolidation confidence < 0.8, downgrade to witness (kernel rule)
+    const effectiveAuthority = protocol === "consolidation" && (parsed.confidence || 0) < 0.8
+      ? "witness" : baseAuthority;
 
-    // Convert protocol output to artifacts
-    if (protocol === "reconnaissance") {
-      artifactsCreated.push({
-        name: `recon-${wu.title}`,
-        content: JSON.stringify(parsed, null, 2),
-        artifact_type: "reconnaissance_map",
-        authority_class: "witness",
-      });
-    } else if (protocol === "evidence") {
-      artifactsCreated.push({
-        name: `evidence-${wu.title}`,
-        content: JSON.stringify(parsed, null, 2),
-        artifact_type: "evidence_extract",
-        authority_class: "witness",
-      });
-    } else if (protocol === "consolidation") {
-      artifactsCreated.push({
-        name: `consolidation-${wu.title}`,
-        content: parsed.synthesis || JSON.stringify(parsed, null, 2),
-        artifact_type: "consolidation_report",
-        authority_class: "authority",
-      });
-    } else if (protocol === "review") {
-      artifactsCreated.push({
-        name: `review-${wu.title}`,
-        content: JSON.stringify(parsed, null, 2),
-        artifact_type: "review_verdict",
-        authority_class: "audit",
-      });
-    } else {
-      artifactsCreated.push({
-        name: `${protocol}-${wu.title}`,
-        content: JSON.stringify(parsed, null, 2),
-        artifact_type: protocol,
-        authority_class: "witness",
-      });
-    }
+    const artifactsCreated = [{
+      name: `${protocol}-${wu.title}`,
+      content: JSON.stringify(parsed, null, 2),
+      artifact_type: PROTOCOL_ARTIFACT_TYPE[protocol] || protocol,
+      authority_class: effectiveAuthority,
+    }];
 
-    // Create the commit delta
+    // ─── Step 8: Extract child work from batch_plan ───
+    const childWork = (parsed.batch_plan || []).map((bp: any) => ({
+      title: bp.title,
+      description: bp.description,
+      priority: bp.priority || 50,
+      protocol: bp.protocol || "evidence",
+      input_data: bp.input_data || {},
+    }));
+
+    // ─── Step 9: Create CommitDelta (PROPOSED) ───
+    // Worker NEVER writes directly. It returns a proposed delta for daemon review.
     const { data: delta } = await db.from("ion_commit_deltas").insert({
       work_unit_id,
       run_id,
@@ -306,41 +335,45 @@ Execute this ${protocol.toUpperCase()} protocol work unit and return the result 
       signals_emitted: parsed.signals || [],
       contradictions_found: parsed.contradictions || [],
       confidence: parsed.confidence || 0.7,
-      child_work_suggested: parsed.batch_plan || [],
-      metadata: { model, tokens, protocol },
+      child_work_suggested: childWork,
+      review_reasons: [],
+      protocol,
+      metadata: { model, tokens, protocol, effective_authority: effectiveAuthority },
     }).select().single();
 
-    // Update work unit
+    // ─── Step 10: Transition to VALIDATING ───
+    // (Daemon will pick this up and validate/review the delta)
     await db.from("ion_work_units").update({
-      status: "completed",
-      completed_at: new Date().toISOString(),
+      status: "validating",
+      tokens_used: tokens,
       result_data: parsed,
     }).eq("id", work_unit_id);
 
-    // Update run token count
-    const { data: run } = await db.from("ion_runs").select("total_tokens, completed_work_units").eq("id", run_id).single();
+    // ─── Step 11: Update run token count ───
+    const { data: run } = await db.from("ion_runs").select("total_tokens").eq("id", run_id).single();
     if (run) {
       await db.from("ion_runs").update({
         total_tokens: (run.total_tokens || 0) + tokens,
-        completed_work_units: (run.completed_work_units || 0) + 1,
       }).eq("id", run_id);
     }
 
     return new Response(JSON.stringify({
-      status: "completed",
+      status: "validating",
       delta_id: delta?.id,
       protocol,
       tokens,
+      effective_authority: effectiveAuthority,
       artifacts_created: artifactsCreated.length,
       questions_raised: (parsed.open_questions || []).length,
+      child_work_suggested: childWork.length,
+      confidence: parsed.confidence || 0.7,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("ion-worker error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
