@@ -243,10 +243,14 @@ async function gatherCandidates(db: any, runId: string): Promise<ActionCandidate
     }
   }
 
-  // 6. Pending work units ready for dispatch
+  // 6. Pending work units ready for dispatch (limit concurrency to 3)
   const pendingWUs = (workUnits || []).filter((wu: any) => wu.status === "pending");
+  const runningCount = (workUnits || []).filter((wu: any) =>
+    ["running", "dispatched"].includes(wu.status)
+  ).length;
+  const MAX_CONCURRENT = 3;
   for (const wu of pendingWUs) {
-    // Check dependencies
+    if (runningCount + candidates.filter(c => c.action_type === DaemonActionType.DISPATCH_WORK).length >= MAX_CONCURRENT) break;
     const deps = wu.dependencies || [];
     const allDepsComplete = deps.length === 0 || deps.every((depId: string) =>
       (workUnits || []).some((w: any) => w.id === depId && w.status === "completed")
@@ -261,9 +265,10 @@ async function gatherCandidates(db: any, runId: string): Promise<ActionCandidate
     }
   }
 
-  // 7. Phase planning (no pending/active work, need to advance)
+  // 7. Phase planning — only if NO active/pending/validating work AND no proposed deltas
   const activeCount = (workUnits || []).filter((wu: any) => ACTIVE_STATUSES.includes(wu.status)).length;
-  if (activeCount === 0 && pendingWUs.length === 0) {
+  const hasProposedDeltas = (deltas || []).some((d: any) => d.status === "proposed");
+  if (activeCount === 0 && pendingWUs.length === 0 && !hasProposedDeltas) {
     const completedCount = (workUnits || []).filter((wu: any) => wu.status === "completed").length;
     if (completedCount > 0) {
       const nextProto = PROTOCOL_FOR_PHASE[run.status];
