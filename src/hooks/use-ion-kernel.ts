@@ -111,10 +111,10 @@ export function useIONKernel() {
     return data;
   }, []);
 
-  const refreshState = useCallback(async () => {
-    if (!activeRunId) return;
+  const refreshState = useCallback(async (runId = activeRunId) => {
+    if (!runId) return;
     try {
-      const data = await invoke('get_state', { run_id: activeRunId });
+      const data = await invoke('get_state', { run_id: runId });
       setState(data);
     } catch (e) {
       console.error('Failed to refresh ION state:', e);
@@ -153,7 +153,7 @@ export function useIONKernel() {
       const data = await invoke('start_run', { goal, config });
       setActiveRunId(data.run.id);
       await refreshRuns();
-      await refreshState();
+      await refreshState(data.run.id);
       return data;
     } catch (e: any) {
       setError(e.message);
@@ -226,16 +226,29 @@ export function useIONKernel() {
     }
   }, [activeRunId, invoke, refreshState, refreshRuns]);
 
+  const clearSelection = useCallback(() => {
+    setActiveRunId(null);
+    setState(null);
+    setStepLog([]);
+    setError(null);
+  }, []);
+
   const selectRun = useCallback(async (runId: string) => {
+    if (!runId) {
+      clearSelection();
+      return;
+    }
+
     setActiveRunId(runId);
     setStepLog([]);
+    setError(null);
     try {
       const data = await invoke('get_state', { run_id: runId });
       setState(data);
     } catch (e: any) {
       setError(e.message);
     }
-  }, [invoke]);
+  }, [clearSelection, invoke]);
 
   const answerQuestion = useCallback(async (questionId: string, answer: string) => {
     if (!activeRunId) return;
@@ -280,6 +293,7 @@ export function useIONKernel() {
     reviewDelta,
     stopRun,
     selectRun,
+    clearSelection,
     refreshRuns,
     refreshState,
     answerQuestion,
