@@ -628,8 +628,10 @@ export type Database = {
           id: string
           ledger_rows: Json
           metadata: Json
+          protocol: string | null
           questions_raised: Json
           review_notes: string | null
+          review_reasons: Json
           reviewed_at: string | null
           reviewed_by: string | null
           run_id: string
@@ -646,8 +648,10 @@ export type Database = {
           id?: string
           ledger_rows?: Json
           metadata?: Json
+          protocol?: string | null
           questions_raised?: Json
           review_notes?: string | null
+          review_reasons?: Json
           reviewed_at?: string | null
           reviewed_by?: string | null
           run_id: string
@@ -664,8 +668,10 @@ export type Database = {
           id?: string
           ledger_rows?: Json
           metadata?: Json
+          protocol?: string | null
           questions_raised?: Json
           review_notes?: string | null
+          review_reasons?: Json
           reviewed_at?: string | null
           reviewed_by?: string | null
           run_id?: string
@@ -932,6 +938,7 @@ export type Database = {
           assigned_at: string | null
           completed_at: string | null
           context_package_id: string | null
+          context_version: number | null
           created_at: string
           dependencies: string[]
           description: string
@@ -947,12 +954,14 @@ export type Database = {
           shard_index: number
           status: Database["public"]["Enums"]["ion_work_unit_status"]
           title: string
+          tokens_used: number
         }
         Insert: {
           allowed_writes?: Json
           assigned_at?: string | null
           completed_at?: string | null
           context_package_id?: string | null
+          context_version?: number | null
           created_at?: string
           dependencies?: string[]
           description?: string
@@ -968,12 +977,14 @@ export type Database = {
           shard_index?: number
           status?: Database["public"]["Enums"]["ion_work_unit_status"]
           title?: string
+          tokens_used?: number
         }
         Update: {
           allowed_writes?: Json
           assigned_at?: string | null
           completed_at?: string | null
           context_package_id?: string | null
+          context_version?: number | null
           created_at?: string
           dependencies?: string[]
           description?: string
@@ -989,6 +1000,7 @@ export type Database = {
           shard_index?: number
           status?: Database["public"]["Enums"]["ion_work_unit_status"]
           title?: string
+          tokens_used?: number
         }
         Relationships: [
           {

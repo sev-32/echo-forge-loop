@@ -243,10 +243,14 @@ async function gatherCandidates(db: any, runId: string): Promise<ActionCandidate
     }
   }
 
-  // 6. Pending work units ready for dispatch
+  // 6. Pending work units ready for dispatch (limit concurrency to 3)
   const pendingWUs = (workUnits || []).filter((wu: any) => wu.status === "pending");
+  const runningCount = (workUnits || []).filter((wu: any) =>
+    ["running", "dispatched"].includes(wu.status)
+  ).length;
+  const MAX_CONCURRENT = 3;
   for (const wu of pendingWUs) {
-    // Check dependencies
+    if (runningCount + candidates.filter(c => c.action_type === DaemonActionType.DISPATCH_WORK).length >= MAX_CONCURRENT) break;
     const deps = wu.dependencies || [];
     const allDepsComplete = deps.length === 0 || deps.every((depId: string) =>
       (workUnits || []).some((w: any) => w.id === depId && w.status === "completed")
@@ -261,9 +265,10 @@ async function gatherCandidates(db: any, runId: string): Promise<ActionCandidate
     }
   }
 
-  // 7. Phase planning (no pending/active work, need to advance)
+  // 7. Phase planning — only if NO active/pending/validating work AND no proposed deltas
   const activeCount = (workUnits || []).filter((wu: any) => ACTIVE_STATUSES.includes(wu.status)).length;
-  if (activeCount === 0 && pendingWUs.length === 0) {
+  const hasProposedDeltas = (deltas || []).some((d: any) => d.status === "proposed");
+  if (activeCount === 0 && pendingWUs.length === 0 && !hasProposedDeltas) {
     const completedCount = (workUnits || []).filter((wu: any) => wu.status === "completed").length;
     if (completedCount > 0) {
       const nextProto = PROTOCOL_FOR_PHASE[run.status];
@@ -829,13 +834,21 @@ serve(async (req) => {
 
       case "run_to_completion": {
         if (!run_id) throw new Error("run_id is required");
-        const limit = Math.min(max_steps || 10, 25);
+        const limit = Math.min(max_steps || 8, 15); // Conservative limit to avoid timeouts
         const steps: any[] = [];
+        let idleCount = 0;
         for (let i = 0; i < limit; i++) {
           const r = await stepOnce(db, run_id);
           steps.push(r);
-          if (["idle", "completed", "error"].includes(r.status) && r.reason !== "WAITING:1_IN_FLIGHT") break;
-          await new Promise(resolve => setTimeout(resolve, 300));
+          if (r.status === "idle") {
+            idleCount++;
+            if (idleCount >= 2) break; // Two consecutive idles = stop
+          } else {
+            idleCount = 0;
+          }
+          if (["completed", "error"].includes(r.status)) break;
+          if (r.chosen_action === "COMPLETE_RUN") break;
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
         result = { steps, total_steps: steps.length, final: steps[steps.length - 1] };
         break;
