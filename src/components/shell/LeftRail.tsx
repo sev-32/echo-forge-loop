@@ -34,7 +34,7 @@ const railItems: RailItem[] = [
   { id: 'chat', icon: IconIntelligence, label: 'Intelligence', shortcut: '1', section: 'primary' },
   { id: 'docs', icon: IconJournal, label: 'Documents', shortcut: '2', section: 'primary' },
   { id: 'ide', icon: IconCode, label: 'IDE', shortcut: '3', section: 'primary' },
-  { id: 'ion', icon: IconION, label: 'ION Kernel', shortcut: 'I', section: 'primary' },
+  { id: 'ion', icon: IconION, label: 'ION', shortcut: 'I', section: 'primary' },
 
   { id: 'missions', icon: IconMission, label: 'Missions', shortcut: '3', section: 'primary' },
   { id: 'swarm', icon: IconSwarm, label: 'Swarm', shortcut: '4', section: 'primary' },

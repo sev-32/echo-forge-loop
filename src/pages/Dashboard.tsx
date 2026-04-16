@@ -224,8 +224,8 @@ export default function Dashboard() {
           {activeTab === 'research' && <DeepResearchPanel />}
         </PanelErrorBoundary>
 
-        {/* ═══ ION Kernel ═══ */}
-        <PanelErrorBoundary fallbackTitle="ION Kernel">
+        {/* ═══ ION ═══ */}
+        <PanelErrorBoundary fallbackTitle="ION">
           {activeTab === 'ion' && <IONPanel />}
         </PanelErrorBoundary>
 
