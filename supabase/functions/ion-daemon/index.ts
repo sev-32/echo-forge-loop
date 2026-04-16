@@ -834,13 +834,21 @@ serve(async (req) => {
 
       case "run_to_completion": {
         if (!run_id) throw new Error("run_id is required");
-        const limit = Math.min(max_steps || 10, 25);
+        const limit = Math.min(max_steps || 8, 15); // Conservative limit to avoid timeouts
         const steps: any[] = [];
+        let idleCount = 0;
         for (let i = 0; i < limit; i++) {
           const r = await stepOnce(db, run_id);
           steps.push(r);
-          if (["idle", "completed", "error"].includes(r.status) && r.reason !== "WAITING:1_IN_FLIGHT") break;
-          await new Promise(resolve => setTimeout(resolve, 300));
+          if (r.status === "idle") {
+            idleCount++;
+            if (idleCount >= 2) break; // Two consecutive idles = stop
+          } else {
+            idleCount = 0;
+          }
+          if (["completed", "error"].includes(r.status)) break;
+          if (r.chosen_action === "COMPLETE_RUN") break;
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
         result = { steps, total_steps: steps.length, final: steps[steps.length - 1] };
         break;
